@@ -5,7 +5,7 @@
   "TrainModule": {
     "Type": "StandardTrainModule",
     "Network": {
-      "Type": "ExampleCNN",
+      "Type": "SimpleCNN",
       "NumOutputs": 10
     },
     "Loss": {
