@@ -1,0 +1,64 @@
+{
+  "Type": "Train",
+  "Epochs": "----Set the number of training epochs here-----",
+  "Name": "$NAME",
+  "TrainModule": {
+		"Type": "ClassificationTrainModule",
+		"Network": {
+			"Type": "Resnet50",
+      		"Activation": "PReLU"
+		},
+		"Loss": {
+			"Type": "CrossEntropyLoss",
+			"Source": "data",
+			"Target": "target"
+		},
+		"Optimizer": {
+			"Type": "SGD",
+			"LR": 0.075
+		}
+	},
+	"DataModule": {
+		"Type": "DataModule",
+		"TrainDataloader": {
+			"Type": "Dataloader",
+			"BatchSize": 200,
+			"NumWorkers": 4,
+			"PinMemory": true,
+			"Shuffle": true,
+			"Datasets": [
+				{
+					"Type": "CIFAR10",
+					"Source": "Data/CIFAR10"
+				}
+			],
+			"Transforms": [
+				{
+					"Type": "Mirror",
+					"ApplyTo": "data",
+					"Probability": 0.4
+				},
+                {
+					"Type": "ExampleGrayscale",
+					"Name": "FirstGrayscaleTransform",
+					"ApplyTo": "data",
+					"InPlace": false,
+					"OutputSuffix": "grayscale",
+					"SplitChannels": true
+				},
+				{
+					"Type": "ExampleGrayscale",
+					"Name": "SecondGrayscaleTransform",
+					"ApplyTo": ["data","data_grayscale"],
+					"InPlace": false,
+					"OutputNames": ["data_also_grayscale", "data_extra_grayscale"],
+					"SplitChannels": false
+				},
+				{
+					"Type": "ToTensor",
+					"ApplyTo": ["data_grayscale","red_channel","blue_channel", "green_channel","data_also_grayscale", "data_extra_grayscale"]
+				}
+			]
+		}
+	}
+}

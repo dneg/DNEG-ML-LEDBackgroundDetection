@@ -1,0 +1,38 @@
+{
+  "Type": "Train",
+  "Epochs": "----Set the number of training epochs here-----",
+  "Name": "$NAME",
+  "TrainModule": {
+    "Type": "StandardTrainModule",
+    "Network": {
+      "Type": "SimpleCNN",
+      "NumOutputs": 10
+    },
+    "Loss": {
+      "Type": "CrossEntropyLoss",
+      "Source": "data",
+      "Target": "target"
+    },
+    "Optimizer": {
+      "Type": "SGD",
+      "LR": 0.075
+    }
+  },
+  "DataModule": {
+    "Type": "DataModule",
+    "TrainDataloader": {
+      "Type": "Dataloader",
+      "BatchSize": 200,
+      "NumWorkers": 4,
+      "PinMemory": true,
+      "Shuffle": true,
+      "Datasets":
+            [
+              {
+                "Type": "FashionMNIST",
+                "Source": "Data/FashionMNIST_v1"
+              }
+            ]
+    }
+  }
+}
