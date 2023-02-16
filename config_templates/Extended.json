@@ -3,10 +3,11 @@
   "Epochs": "----Set the number of training epochs here-----",
   "Name": "$NAME",
   "TrainModule": {
-    "Type": "StandardTrainModule",
+    "Type": "ClassificationTrainModule",
     "Network": {
-      "Type": "SimpleCNN",
-      "NumOutputs": 10
+      "Type": "ExtendedSimpleCNN",
+      "BatchNorm": true,
+      "Activation": "PReLU"
     },
     "Loss": {
       "Type": "CrossEntropyLoss",
@@ -31,6 +32,20 @@
               {
                 "Type": "FashionMNIST",
                 "Source": "Data/FashionMNIST_v1"
+              }
+            ]
+    },
+    "ValDataloader": {
+      "Type": "Dataloader",
+      "BatchSize": 200,
+      "NumWorkers": 4,
+      "PinMemory": true,
+       "Datasets":
+            [
+              {
+                "Type": "FashionMNIST",
+                "Source": "Data/FashionMNIST_v1",
+                "TrainingSet": false
               }
             ]
     }

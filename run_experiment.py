@@ -50,7 +50,7 @@ def train(experiment: str, device: str, resume: bool, resume_from_checkpoint: Op
 
     # 2. Configure the system log
     Logger().configure(log_name="{}_{}".format(experiment, Globals().SYSTEM_LOG_NAME),
-                       min_console_log_level=LogLevel.INFO, # TODO Make log level configurable
+                       min_console_log_level=LogLevel.INFO,
                        min_file_log_level=LogLevel.DEBUG,
                        save_path=str(experiment_folder))
 

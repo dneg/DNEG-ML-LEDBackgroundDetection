@@ -1,0 +1,21 @@
+{
+	"Type": "Test",
+	"Name": "Example_test",
+	"DataModule": {
+		"Type": "DataModule",
+		"TestDataloader": {
+			"Type": "Dataloader",
+			"BatchSize": 200,
+			"NumWorkers": 4,
+			"PinMemory": true,
+			"Shuffle": false,
+			"Datasets": [
+				{
+					"Type": "CIFAR10",
+					"Source": "Data/CIFAR10",
+					"TrainingSet": false
+				}
+			]
+		}
+	}
+}

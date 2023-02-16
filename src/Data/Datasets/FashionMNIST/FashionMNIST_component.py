@@ -1,9 +1,8 @@
-from typing import List, Optional, cast
+from typing import List, Optional, cast, Tuple
 
 from dneg_ml_toolkit.src.Data.Datasets.BASE_Dataset.BASE_Dataset_component import BASE_Dataset
 from dneg_ml_toolkit.src.Data.Transforms.BASE_Transform.BASE_Transform_component import BASE_Transform
 from dneg_ml_toolkit.src.Data.ml_toolkit_dictionary import MLToolkitDictionary
-from torch.utils.data.dataset import T_co
 
 from dneg_ml_toolkit.src.Data.Transforms.ToTensor.ToTensor_config import ToTensorConfig
 from dneg_ml_toolkit.src.Data.Transforms.ToTensor.ToTensor_component import ToTensor
@@ -15,6 +14,9 @@ import numpy as np
 
 
 class FashionMNIST(BASE_Dataset):
+    """
+    Dataset Component to connect to the PyTorch FashionMNIST dataset and serve its images to the Dataloader
+    """
 
     def __init__(self, config: FashionMNISTConfig, transforms: List[BASE_Transform]):
 
@@ -39,20 +41,37 @@ class FashionMNIST(BASE_Dataset):
     def __len__(self) -> int:
         return len(self.data_source)
 
-    def __getitem__(self, index) -> T_co:
+    def __getitem__(self, index) -> Tuple[MLToolkitDictionary, MLToolkitDictionary]:
+        """
+        Core Dataset function that accepts a data index, retrieves the data at that index, its corresponding
+        metadata/targets, passes the item through the Transform pipeline, and returns the item to the calling Dataloader
+        Args:
+            index: Integer index of the data item within the Dataset
+
+        Returns:
+            A tuple of Toolkit dictionaries, the first containing the data to send to the Network, the second with the
+            metadata/targets to send to the Loss.
+        """
         image, _ = self.data_source[index]
 
+        # All data is transported through ML Toolkit systems in ML Toolkit dictionaries
+        # (a custom dictionary for holding Tensors). This provides flexibility for training,
+        # as multiple tensors can be passed into the forward pass of the Network and Loss at the same time.
+        # The ML Toolkit standard is for the Dataset to store the core tensor, such as the image in this case,
+        # under the "data" keyword, and the ground truth under the "target" keyword.
         train_dict = MLToolkitDictionary({"data": image, "index": index})
         target_dict = self.get_item_metadata(index)
 
-        # Apply all configured Transforms
+        # Pass all the data for the sample through the Transform pipeline
         train_dict, target_dict = self.apply_transforms(train_dict, target_dict)
 
         return train_dict, target_dict
 
     def get_item_metadata(self, index: int) -> MLToolkitDictionary:
         """
-        Get the metadata for the provided index
+        Get the metadata for the provided index. FashionMNIST stores the data and the metadata together,
+        but the standard for ML Toolkit datasets is to store the data and metadata separately, so that
+        analysis on the metadata can be performed without having to load all the data into memory.
 
         Args:
             index: Valid dataset index
@@ -69,7 +88,8 @@ class FashionMNIST(BASE_Dataset):
 
     def get_data_shape(self) -> List[int]:
         """
-        Get the image resolution of the data in the dataset, assuming that all images have the same resolution.
+        Get the image resolution of the data in the dataset, assuming that all images have the same resolution. This
+        is passed to the Network and can be used to drive the creation of the Network architecture
 
         Returns:
             Image resolution of the image data after all Transforms have been applied, in [H,W,C] format
@@ -87,7 +107,8 @@ class FashionMNIST(BASE_Dataset):
 
     def get_classes(self) -> List[int]:
         """
-        Gets a list of all the unique classes in the dataset
+        Gets a list of all the unique classes in the dataset. See the ClassificationTrainModule where this is used
+        to dynamically configure the Network's output shapes based on the number of classes in the dataset.
 
         Returns:
             Unique class list

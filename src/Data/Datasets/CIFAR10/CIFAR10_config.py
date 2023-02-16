@@ -11,13 +11,14 @@ from dneg_ml_toolkit.src.Data.Datasets.BASE_Dataset.BASE_Dataset_config import B
 # Fields are inherited from the parent Config class, so a Component may have more configuration and fields with
 # default values that can be customized.
 @dataclass
-class FashionMNISTConfig(BASE_DatasetConfig):
+class CIFAR10Config(BASE_DatasetConfig):
     """
-    Configuration dataclass for the FashionMNIST Dataset. Any dataclass fields defined here are configurable from JSON,
-    and this object is used to create the FashionMNIST Dataset object, initialized based on the values of the fields.
+    Configuration dataclass for the CIFAR10 Dataset. Any dataclass fields defined here are configurable from JSON,
+    and this object is used to create the CIFAR10 Dataset object, initialized based on the values of the fields.
 
     Attributes:
-        TrainingSet (boolean, default: true); Whether to use the training or testing subset of FashionMNIST
+        TrainingSet (boolean, default: true); Whether to use the training or testing subset of CIFAR10
 
     """
+
     TrainingSet: bool = True
