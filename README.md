@@ -4,7 +4,7 @@ Template for projects using DNEG ML Toolkit
 ## Installation
 DNEG-ML-Template extends the DNEG-ML-Toolkit, following its structure and extending its functionality.
 DNEG-ML-Toolkit currently needs to be run from source, which can be found at:
-https://github.com/dneg/DNEG-ML-Toolkit/releases/tag/v1.1. Follow the instructions there to set up the environment and install
+https://github.com/dneg/DNEG-ML-Toolkit/tree/v1.1. Follow the instructions there to set up the environment and install
 the Toolkit.
 
 Once this is done, install the following in the same conda environment to run DNEG-ML-Template:
