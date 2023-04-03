@@ -4,7 +4,7 @@ Template for projects using DNEG ML Toolkit
 ## Installation
 DNEG-ML-Template extends the DNEG-ML-Toolkit, following its structure and extending its functionality.
 DNEG-ML-Toolkit currently needs to be run from source, which can be found at:
-https://github.com/dneg/DNEG-ML-Toolkit/tree/v1.0.1. Follow the instructions there to set up the environment and install
+https://github.com/dneg/DNEG-ML-Toolkit/tree/v1.1. Follow the instructions there to set up the environment and install
 the Toolkit.
 
 Once this is done, install the following in the same conda environment to run DNEG-ML-Template:
@@ -21,8 +21,18 @@ Example usage:
 
 *python run_experiment.py make-experiment --name {experiment_name} --template Simple*
 
+- *name* Name of the experiment to create.
 - *template* is the name of a json configuration file found in the config_templates folder. The tool's command line help will list all available templates.
 - Once the experiment has been created, edit the experiment's json configuration file to provision the system and set the hyperparameters for the experiment.
+
+### Make Run
+Experiments are divided up into runs. A folder for a new run can be created in the experiment's folder (with the naming convention run_#),
+or this tool can be used to automatically create the sub-folder with the correctly incremented run number, and a copy of the experiment's
+base JSON configuration.
+
+*python run_experiment.py make-run --name {experiment_name}*
+
+- *name* Name of an existing experiment to create a new run for.
 
 ### Run Experiment
 Run Experiment runs the training of the ML system, using the json configuration for the specified configuration. The experiment
@@ -30,9 +40,10 @@ folder and json configuration can be created manually, or you can use the Make E
 
 Example usage: 
 
-*python run_experiment.py train --experiment {experiment_name} --device 1*
+*python run_experiment.py train --experiment {experiment_name} --run 0 --device 1*
 
 - *experiment* is the name of the experiment within the experiments folder
+- *run* Number of the experiment run to train.
 - *device* allows the experiment to be run on gpu. 1 will run on 1 gpu, [0] will run on gpu with index 0, cpu will run the training on cpu.
 - *resume* Attempt to resume the training from the latest checkpoint. If no checkpoint is found, will start from the beginning.
 - *resume_from_checkpoint* Path to a specific checkpoint to resume the training from. Cannot be use if --resume is enabled.
@@ -43,19 +54,32 @@ run_testing will load a checkpoint for the experiment and run inference on the t
 
 Example usage: 
 
-*python run_testing.py --experiment {experiment_name} --device 1*
+*python run_testing.py --experiment {experiment_name} --run 0 --device 1*
 
 - *experiment* is the name of the experiment within the experiments folder
+- *run* Number of the experiment run to test.
 - *device* allows the testing to be run on gpu. 1 will run on 1 gpu, [0] will run on gpu with index 0, cpu will run the training on cpu.
 - *checkpoint* Name of the checkpoint in the experiment's Checkpoint folder to load. If not specified, will load the latest checkpoint.
 
 ### Running Tensorboard
 The system generates Tensorboard reports as it is running. To view these reports, run tensorboard from commandline using:
 
-*tensorboard --logdir {Experiment Report Dir}*
+*tensorboard --logdir {Experiment Dir}*
 
-- The *logdir* is the Reports subfolder within the experiment's folder.
+- The *logdir* is the experiment's folder. This will allow reports from all experiment runs to be viewed.
 - With tensorboard running, follow its instructions to connect to it from a web browser.
+
+### Make Component Tool
+The Make Component Tool aims to speed up development by creating the scaffolding for new Components. See the Development
+section below for details on ML Toolkit's Components - this tool essentially automates the implementation guidelines
+described there.
+
+*python run_make_component.py --name EXAMPLETransform --target_folder Data/Transforms --parent_component BASE_Transform*
+
+- *name* is the name of the new Component to create.
+- *target_folder* is the folder relative to the project's src folder to create the Component in.
+- *parent_component* Name of the Component to inherit from. E.g. if creating a new Network, inherit from Base_Network. If not provided, will inherit from ML Toolkit's base Component."
+- *is_base_component* Optional flag used when creating a new base Component type.
 
 ## Tutorial
 The DNEG ML Template project is an example project that shows how to build ML systems using DNEG ML Toolkit. It uses image classification
@@ -116,7 +140,8 @@ as CIFAR10 data is loaded as PIL images and the Network requires it to be a tens
 The DNEG ML Template project is documented and commented throughout to guide the development of projects using DNEG ML 
 Toolkit. Some general points on development:
 - DNEG ML Toolkit implements a Component-based environment. It defines generic base Components for most ML system objects
-  (Network, Loss, Optimizer, Dataset, etc.), which can be inherited from to create specific Components.
+  (Network, Loss, Optimizer, Dataset, etc.), which can be inherited from to create specific Components. Any object 
+structured as a Component is exposed to the ML Toolkit's configuration system.
 - The project should follow the same folder structure as the core Toolkit for types of Components. ML Template includes most 
 of the Component types available in the Toolkit, but not all.
 - To add a new Component for an existing type, create a new {ComponentName} sub-folder in the Component type's folder. This sub-folder

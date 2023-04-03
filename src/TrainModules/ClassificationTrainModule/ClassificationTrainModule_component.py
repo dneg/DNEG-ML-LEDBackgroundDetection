@@ -1,4 +1,4 @@
-from typing import List, Dict, Any, cast
+from typing import List, Dict, Any, cast, Optional
 import os
 
 from dneg_ml_toolkit.src.Component.component_store import ComponentStore
@@ -125,19 +125,21 @@ class ClassificationTrainModule(BASE_TrainModule):
 
         return parameters
 
-    def forward(self, batch_data: MLToolkitDictionary) -> MLToolkitDictionary:
+    def forward(self, batch_data: MLToolkitDictionary, step: Optional[int] = -1) -> MLToolkitDictionary:
         """
         Perform a forward pass on the Network
 
         Args:
             batch_data: The Data for the batch, which gets passed into the Network
+            step: When training, pass the number of the current training iteration. -1 implies that the model
+                is not training.
 
         Returns:
             The network output
 
         """
 
-        return self.Network.forward(batch_data)
+        return self.Network.forward(batch_data, step=step)
 
     def forward_testing(self, batch_data: MLToolkitDictionary, batch_metadata: MLToolkitDictionary, step: int) -> None:
         """
@@ -159,7 +161,7 @@ class ClassificationTrainModule(BASE_TrainModule):
         # the batch "data" field in-place with the network output
         images = batch_data["data"].clone().detach()
 
-        outputs = self.forward(batch_data)
+        outputs = self.forward(batch_data, step=-1)
 
         # Get the max class value across the class predictions for each batch sample
         _, predicted = torch.max(outputs["data"], dim=1)
@@ -195,7 +197,7 @@ class ClassificationTrainModule(BASE_TrainModule):
         total_loss = total_loss.to(device)
 
         # Perform the forward pass
-        network_outputs = self.forward(data)
+        network_outputs = self.forward(data, step=self._train_step)
 
         batch_accuracy = self.train_metrics['accuracy'](
             network_outputs["data"].detach().cpu().softmax(-1), metadata["target"].cpu())
