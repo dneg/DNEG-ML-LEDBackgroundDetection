@@ -1,12 +1,10 @@
-from typing import List
-import math
+from typing import List, Optional
 
 from dneg_ml_toolkit.src.Networks.BASE_Network.BASE_Network_component import BASE_Network
 import dneg_ml_toolkit.src.Networks.layers as dneg_ml
 from dneg_ml_toolkit.src.Data.ml_toolkit_dictionary import MLToolkitDictionary
 from src.Networks.SimpleCNN.SimpleCNN_config import SimpleCNNConfig
 
-import torch
 import torch.nn as nn
 
 
@@ -75,7 +73,7 @@ class SimpleCNN(BASE_Network):
         # Call this after self.network is created, as it applies to the submodules of this class
         self.init_layer_weights()
 
-    def forward(self, train_dict: MLToolkitDictionary) -> MLToolkitDictionary:
+    def forward(self, train_dict: MLToolkitDictionary, step: Optional[int] = -1) -> MLToolkitDictionary:
         """
         Perform the forward pass on the network.
 
@@ -85,7 +83,7 @@ class SimpleCNN(BASE_Network):
                 be passed into the forward pass at the same time. The ML Toolkit standard is for the Dataset (see
                 CIFAR10 or FashionMNIST) to store the core tensor, such as the image in this case, under the "data"
                 keyword, and the ground truth under the "target" keyword.
-
+            step: Allow the trainer to inform the Network of the current step
         Returns:
             The input ML Toolkit dictionary, with the "data" field updated with the Network outputs
         """

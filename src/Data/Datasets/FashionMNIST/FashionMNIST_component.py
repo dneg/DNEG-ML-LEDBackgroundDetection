@@ -1,7 +1,7 @@
 from typing import List, Optional, cast, Tuple
 
 from dneg_ml_toolkit.src.Data.Datasets.BASE_Dataset.BASE_Dataset_component import BASE_Dataset
-from dneg_ml_toolkit.src.Data.Transforms.BASE_Transform.BASE_Transform_component import BASE_Transform
+from dneg_ml_toolkit.src.Data.Collate.BASE_Collate.BASE_Collate_component import BASE_Collate
 from dneg_ml_toolkit.src.Data.ml_toolkit_dictionary import MLToolkitDictionary
 
 from dneg_ml_toolkit.src.Data.Transforms.ToTensor.ToTensor_config import ToTensorConfig
@@ -16,15 +16,23 @@ import numpy as np
 class FashionMNIST(BASE_Dataset):
     """
     Dataset Component to connect to the PyTorch FashionMNIST dataset and serve its images to the Dataloader
+
+    Args:
+        config: Dataset config object
+        collate_component: Reference to the Collate Component. This can be used to access the Collate's Transform
+            pipeline, and apply Transforms in the Dataset's getitem if the Collate is configured to not apply
+            the Transforms (Transforming in the Dataset is more efficient as it uses the Dataloader's workers,
+            but the Transforms cannot be applied with an awareness of other batch elements.)
     """
 
-    def __init__(self, config: FashionMNISTConfig, transforms: List[BASE_Transform]):
+    def __init__(self, config: FashionMNISTConfig, collate_component: BASE_Collate):
 
         # FashionMNIST returns PIL images, so append a ToTensor Transform to the end of the
         # configured Transforms so that the data is always returned in tensor format.
-        transforms.append(ToTensor(ToTensorConfig(Type="ToTensor", ApplyTo=["data"])))
+        collate_component.append_transform(ToTensor(ToTensorConfig(Type="ToTensor", ApplyTo=["data"])))
 
-        super().__init__(config, allow_multiple_sources=False, transforms=transforms, check_source_exists=False)
+        super().__init__(config, allow_multiple_sources=False, check_source_exists=False,
+                         collate_component=collate_component)
 
         # This just informs the type checker that the config is of type FashionMNISTDatasetConfig,
         # since self.config is set in the parent's constructor, which is not aware of FashionMNISTDatasetConfig,
@@ -41,31 +49,31 @@ class FashionMNIST(BASE_Dataset):
     def __len__(self) -> int:
         return len(self.data_source)
 
-    def __getitem__(self, index) -> Tuple[MLToolkitDictionary, MLToolkitDictionary]:
+    def get_item_data(self, index: int) -> Tuple[MLToolkitDictionary, Optional[MLToolkitDictionary]]:
         """
-        Core Dataset function that accepts a data index, retrieves the data at that index, its corresponding
-        metadata/targets, passes the item through the Transform pipeline, and returns the item to the calling Dataloader
+        Get the data for the provided index. The Dataloader calls this function through the Dataset's __getitem__
+        if DataReadMode is DataOnly or DataAndMetadata
+
         Args:
-            index: Integer index of the data item within the Dataset
+            index: Valid dataset index
 
         Returns:
-            A tuple of Toolkit dictionaries, the first containing the data to send to the Network, the second with the
-            metadata/targets to send to the Loss.
+            An MLToolkitDictionary of the data associated with the index; An optional dictionary of additional
+            target data generated from the data. The data dictionary is routed into the network, the target dict
+            is routed into the losses. The target dict is combined with the output of get_item_metadata if the Dataset's
+            DataReadMode is DataAndMetadata (i.e. its default mode).
         """
-        image, _ = self.data_source[index]
 
         # All data is transported through ML Toolkit systems in ML Toolkit dictionaries
         # (a custom dictionary for holding Tensors). This provides flexibility for training,
         # as multiple tensors can be passed into the forward pass of the Network and Loss at the same time.
         # The ML Toolkit standard is for the Dataset to store the core tensor, such as the image in this case,
         # under the "data" keyword, and the ground truth under the "target" keyword.
+        image, _ = self.data_source[index]
         train_dict = MLToolkitDictionary({"data": image, "index": index})
-        target_dict = self.get_item_metadata(index)
 
-        # Pass all the data for the sample through the Transform pipeline
-        train_dict, target_dict = self.apply_transforms(train_dict, target_dict)
-
-        return train_dict, target_dict
+        # FashionMNIST has no target data generated from the image, so don't return a target dict
+        return train_dict, None
 
     def get_item_metadata(self, index: int) -> MLToolkitDictionary:
         """
@@ -96,7 +104,13 @@ class FashionMNIST(BASE_Dataset):
         """
 
         if self._image_resolution is None:
-            data, _ = self.__getitem__(0)
+            # If the Collate normally applies transforms, call its apply transforms function manually so that the data
+            # shape is the correct shape after transforming. Otherwise, just call getitem, which applies the transforms
+            # automatically when Collate doesn't
+            if self._collate_component.apply_transforms_in_collate:
+                data, _ = self._collate_component.apply_transforms_to_sample(*self.__getitem__(0))
+            else:
+                data, _ = self.__getitem__(0)
             shape = np.array(data['data'].shape)  # Shape in C, H, W
 
             # Store the image resolution once it has been retrieved, so that future calls to this function
