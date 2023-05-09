@@ -65,7 +65,10 @@ class Foreground(BASE_Transform):
         for t in transform_metadata['target']:
             maxForegroundArea -= t['area']
             for s in t['segmentation']:
-                draw.polygon(s, fill=255)
+                try:
+                    draw.polygon(s, fill=255)
+                except:
+                    pass #ignore
             if maxForegroundArea < 0: break
 
         # 5. Convert the transformed image back to the original Data type.
