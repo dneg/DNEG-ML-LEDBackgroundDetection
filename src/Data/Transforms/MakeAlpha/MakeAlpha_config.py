@@ -4,10 +4,8 @@ from dneg_ml_toolkit.src.Data.Transforms.BASE_Transform.BASE_Transform_config im
 
 
 @dataclass
-class ForegroundConfig(BASE_TransformConfig):
+class MakeAlphaConfig(BASE_TransformConfig):
     """
     Config dataclass for the Foreground Transform
 
     """
-
-    #Period = 20

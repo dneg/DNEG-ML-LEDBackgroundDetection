@@ -3,20 +3,16 @@ from dneg_ml_toolkit.src.Data.Transforms.BASE_Transform.BASE_Transform_component
 from dneg_ml_toolkit.src.Data.ml_toolkit_dictionary import MLToolkitDictionary
 from dneg_ml_toolkit.src.Data.image_tools import image_dtype_utils
 
-from src.Data.Transforms.Combine.Combine_config import CombineConfig
+from src.Data.Transforms.MakeAlpha.MakeAlpha_config import MakeAlphaConfig
 
-from PIL import Image 
+from PIL import Image, ImageDraw
 
-from pycocotools.coco import COCO 
 import numpy as np
-import math
 
 
-OFFSET = np.array([[0,0], [math.pi,0], [math.pi/2, math.pi/2]]) #locations of blue, green, red peaks 
+class MakeAlpha(BASE_Transform):
 
-class Combine(BASE_Transform):
-
-    def __init__(self, config: CombineConfig):
+    def __init__(self, config: MakeAlphaConfig):
         # The Transform will apply the data augmentation to any data specified in its configuration's
         # ApplyTo field.
         # It may specify an additional list of keys and pass it to the parent constructor as the
@@ -24,7 +20,7 @@ class Combine(BASE_Transform):
         # for calculating the augmentation to apply to the ApplyTo data. These metadata items will not
         # be altered by the Transform
         # This example just requests the dataset index for the piece of data
-        required_transform_metadata = ["index", config.Foreground, config.Alpha]
+        required_transform_metadata = ["index", "data"]
         super().__init__(config, required_transform_metadata=required_transform_metadata)
 
 
@@ -49,21 +45,31 @@ class Combine(BASE_Transform):
 
         # 1. Get the data type of the input data (and the device if it is a tensor). These are tracked so that
         # the transformed data can be returned with the matching data type
+        (w,h,c) = np.shape(transform_metadata['data'])
 
         # format using the ML Toolkit's helper function
-        data_to_transform, _ = image_dtype_utils.transform_data_type(data_to_transform,
-                                                                     to_type=image_dtype_utils.ImageDataType.PILImage)
-        foregroundImage, _ = image_dtype_utils.transform_data_type(transform_metadata[self.config.Foreground],
-                                                                   to_type=image_dtype_utils.ImageDataType.PILImage)
 
         # 4. Perform the transformation of the data
-        transformed_data = data_to_transform.copy()
-        transformed_data.paste(foregroundImage, (0, 0), foregroundImage)
+        maxForegroundArea = w*h*0.3
+        alpha = Image.new("L", (h,w), 0)
+        draw = ImageDraw.Draw(alpha)
 
+        for t in data_to_transform:
+            maxForegroundArea -= t['area']
+            for s in t['segmentation']:
+                try:
+                    draw.polygon(s, fill=255)
+                except:
+                    pass #ignore
+            if maxForegroundArea < 0: break
 
         # 5. Convert the transformed image back to the original Data type.
         #transformed_data, _ = image_dtype_utils.transform_data_type(grayscale_image, to_type=input_datatype,
         #                                                            device=device)
+        transformed_data = np.expand_dims(alpha, axis=2)
+
+        #6. Apply alpha channel to image if given
+
         additional_data = MLToolkitDictionary({})
 
         return transformed_data, additional_data

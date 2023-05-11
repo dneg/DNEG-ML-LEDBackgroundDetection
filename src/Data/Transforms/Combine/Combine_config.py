@@ -11,3 +11,4 @@ class CombineConfig(BASE_TransformConfig):
     """
 
     Foreground: str = "data"
+    Alpha: str = "alpha_channel"

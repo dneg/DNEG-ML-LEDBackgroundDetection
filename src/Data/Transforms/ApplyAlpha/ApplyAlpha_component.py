@@ -3,21 +3,16 @@ from dneg_ml_toolkit.src.Data.Transforms.BASE_Transform.BASE_Transform_component
 from dneg_ml_toolkit.src.Data.ml_toolkit_dictionary import MLToolkitDictionary
 from dneg_ml_toolkit.src.Data.image_tools import image_dtype_utils
 
-from src.Data.Transforms.Foreground.Foreground_config import ForegroundConfig
+from src.Data.Transforms.MakeAlpha.MakeAlpha_config import MakeAlphaConfig
 
-from torchvision.transforms import RandomPerspective
 from PIL import Image, ImageDraw
 
-from pycocotools.coco import COCO 
 import numpy as np
-import math
 
 
-OFFSET = np.array([[0,0], [math.pi,0], [math.pi/2, math.pi/2]]) #locations of blue, green, red peaks 
+class ApplyAlpha(BASE_Transform):
 
-class Foreground(BASE_Transform):
-
-    def __init__(self, config: ForegroundConfig):
+    def __init__(self, config: MakeAlphaConfig):
         # The Transform will apply the data augmentation to any data specified in its configuration's
         # ApplyTo field.
         # It may specify an additional list of keys and pass it to the parent constructor as the
@@ -25,7 +20,7 @@ class Foreground(BASE_Transform):
         # for calculating the augmentation to apply to the ApplyTo data. These metadata items will not
         # be altered by the Transform
         # This example just requests the dataset index for the piece of data
-        required_transform_metadata = ["index", "target"]
+        required_transform_metadata = ["index", config.AlphaChannel]
         super().__init__(config, required_transform_metadata=required_transform_metadata)
 
 
@@ -50,32 +45,23 @@ class Foreground(BASE_Transform):
 
         # 1. Get the data type of the input data (and the device if it is a tensor). These are tracked so that
         # the transformed data can be returned with the matching data type
-        input_datatype, device = image_dtype_utils.get_image_datatype(data_to_transform)
-        (w,h,c) = np.shape(data_to_transform) 
 
         # format using the ML Toolkit's helper function
         data_to_transform, _ = image_dtype_utils.transform_data_type(data_to_transform,
                                                                      to_type=image_dtype_utils.ImageDataType.PILImage)
+        alpha, _ = image_dtype_utils.transform_data_type(transform_metadata[self.config.AlphaChannel],
+                                                         to_type=image_dtype_utils.ImageDataType.PILImage)
 
         # 4. Perform the transformation of the data
-        maxForegroundArea = w*h*0.3
-        alpha = Image.new("L", data_to_transform.size, 0)
-        draw = ImageDraw.Draw(alpha)
-
-        for t in transform_metadata['target']:
-            maxForegroundArea -= t['area']
-            for s in t['segmentation']:
-                try:
-                    draw.polygon(s, fill=255)
-                except:
-                    pass #ignore
-            if maxForegroundArea < 0: break
+        data_to_transform.putalpha(alpha)
 
         # 5. Convert the transformed image back to the original Data type.
+        transformed_data = data_to_transform.copy()
         #transformed_data, _ = image_dtype_utils.transform_data_type(grayscale_image, to_type=input_datatype,
         #                                                            device=device)
-        transformed_data = data_to_transform.copy()
-        transformed_data.putalpha(alpha)
-        additional_data = MLToolkitDictionary({"alpha_channel":np.expand_dims(alpha, axis=2)})
+
+        #6. Apply alpha channel to image if given
+
+        additional_data = MLToolkitDictionary({})
 
         return transformed_data, additional_data
