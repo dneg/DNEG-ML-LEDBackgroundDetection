@@ -1,14 +1,16 @@
-# DNEG-ML-Template
-Template for projects using DNEG ML Toolkit 
+# DNEG-ML-LEDBackgroundDetection
+Model to detect foreground from an LED wall background
+Much of this documentation is a holdover from DNEG-ML-Template and may be updated to be more accurate as time goes on.
+The Installation; Run Experiment; and Running Tensorboard sections below are the most relevant
 
 ## Installation
-DNEG-ML-Template extends the DNEG-ML-Toolkit, following its structure and extending its functionality.
+DNEG-ML-LEDBackgroundDetection extends the DNEG-ML-Toolkit, following its structure and extending its functionality.
 DNEG-ML-Toolkit currently needs to be run from source, which can be found at:
 https://github.com/dneg/DNEG-ML-Toolkit/tree/v1.1. Follow the instructions there to set up the environment and install
 the Toolkit.
 
-Once this is done, install the following in the same conda environment to run DNEG-ML-Template:
-1. Navigate to the root folder of DNEG-ML-Template and run *pip install -r requirements.txt*
+Once this is done, install the following in the same conda environment to run DNEG-ML-LEDBackgroundDetection:
+1. Navigate to the root folder of DNEG-ML-LEDBackgroundDetection and run *pip install -r requirements.txt*
 2. Install the correct version of PyTorch 1.12 from https://pytorch.org/get-started/previous-versions/#v1121, using the version with the correct cudatoolkit (i.e. 11.3)
 
 ## Usage
@@ -80,10 +82,6 @@ described there.
 - *target_folder* is the folder relative to the project's src folder to create the Component in.
 - *parent_component* Name of the Component to inherit from. E.g. if creating a new Network, inherit from Base_Network. If not provided, will inherit from ML Toolkit's base Component."
 - *is_base_component* Optional flag used when creating a new base Component type.
-
-## Tutorial
-The DNEG ML Template project is an example project that shows how to build ML systems using DNEG ML Toolkit. It uses image classification
-as the ML task, and includes a variety of Components and options to showcase the ML Toolkit's features.
 
 ### Configuration
 The Simple.json configuration template gives an example of how to quickly start training experiments using DNEG ML Toolkit.
