@@ -1,29 +1,28 @@
 {
   "Type": "Train",
-  "Epochs": 1,
+  "Epochs": 40,
   "Name": "AlphaSegmentation",
   "TrainModule": {
-    "Type": "StandardTrainModule",
+    "Type": "MyTrainModule",
     "Network": {
       "Type": "UnetDiscriminatorV1",
-      "FakeInputData": "alpha_channel",
-      "RealInputData": "data"
+      "NumOutputs": 1
     },
     "Loss": {
-      "Type": "CrossEntropyLoss",
+      "Type": "BinaryCrossEntropyLoss",
       "Source": "data",
-      "Target": "alpha_channel"
+      "Target": "target"
     },
     "Optimizer": {
-      "Type": "SGD",
-      "LR": 0.075
+      "Type": "ADAMW",
+      "LR": 0.0001
     }
   },
   "DataModule": {
     "Type": "DataModule",
     "TrainDataloader": {
       "Type": "Dataloader",
-      "BatchSize": 200,
+      "BatchSize": 128,
       "NumWorkers": 4,
       "PinMemory": true,
       "Shuffle": true,

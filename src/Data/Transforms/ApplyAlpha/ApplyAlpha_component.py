@@ -49,7 +49,12 @@ class ApplyAlpha(BASE_Transform):
         # format using the ML Toolkit's helper function
         data_to_transform, _ = image_dtype_utils.transform_data_type(data_to_transform,
                                                                      to_type=image_dtype_utils.ImageDataType.PILImage)
+
+        #alpha is type "F" (float 0..1), convert to uint 8 in then to type "L" (8bit)
         alpha, _ = image_dtype_utils.transform_data_type(transform_metadata[self.config.AlphaChannel],
+                                                         to_type=image_dtype_utils.ImageDataType.NPArray)
+        alpha = (alpha*255).astype(np.uint8)
+        alpha, _ = image_dtype_utils.transform_data_type(alpha,
                                                          to_type=image_dtype_utils.ImageDataType.PILImage)
 
         # 4. Perform the transformation of the data
@@ -61,7 +66,6 @@ class ApplyAlpha(BASE_Transform):
         #                                                            device=device)
 
         #6. Apply alpha channel to image if given
-
         additional_data = MLToolkitDictionary({})
 
         return transformed_data, additional_data

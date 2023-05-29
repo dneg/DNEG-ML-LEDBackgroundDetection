@@ -1,4 +1,3 @@
-#https://github.com/dneg/DNEG-ML-DeepFakes/blob/develop/src/Networks/UnetDiscriminatorV1/UnetDiscriminatorV1_component.py
 
 from typing import List, Optional
 from dneg_ml_toolkit.src.Networks.layers import Convolution2D, ConvolutionTranspose2D, get_activation, ActivationType
@@ -12,7 +11,10 @@ from torch.nn import LeakyReLU
 
 class UnetDiscriminatorV1(BASE_Network):
     """
-    Inspired by https://arxiv.org/abs/2002.12655 "A U-Net Based Discriminator for Generative Adversarial Networks"
+    Simple implementation based on https://github.com/gntoni/unet_pytorch/blob/master/unet.py
+
+    DNEG discriminator at https://github.com/dneg/DNEG-ML-DeepFakes/blob/develop/src/Networks/UnetDiscriminatorV1/UnetDiscriminatorV1_component.py
+    (Inspired by https://arxiv.org/abs/2002.12655 "A U-Net Based Discriminator for Generative Adversarial Networks")
     """
 
     def __init__(self, config: UnetDiscriminatorV1Config, input_shape: List[int]):
@@ -113,18 +115,20 @@ class UnetDiscriminatorV1(BASE_Network):
         # Call this after self.network is created, as it applies to the submodules of this class
         self.init_layer_weights()
 
-    def forward(self, x: Tensor, output_type: str, step: Optional[int] = -1) -> MLToolkitDictionary:
+    def forward(self, train_dict: MLToolkitDictionary, step: Optional[int] = -1) -> MLToolkitDictionary:
         """
         Perform a forward pass in the discriminator
+
         Args:
-            x: Discriminator input Data
-            output_type: "fake" or "real", is prepended to the output names
+            train_dict: Discriminator input Data
+
         Returns:
             Dictionary of the discriminator outputs
         """
+        x = train_dict["data"]
 
         x = self.in_conv(x)
-
+        
         encs = []
         for conv in self.convs:
             encs.insert(0, x)
@@ -139,7 +143,5 @@ class UnetDiscriminatorV1(BASE_Network):
         x = self.out_conv(x)
 
         # Combine the outputs into a dictionary
-        output_dict = MLToolkitDictionary({"{}_centre_score".format(output_type): centre_out,
-                                           "{}_output_score".format(output_type): x})
-
-        return output_dict
+        train_dict["data"] = x
+        return train_dict

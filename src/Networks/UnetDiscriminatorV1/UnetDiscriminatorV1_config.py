@@ -14,8 +14,7 @@ class UnetDiscriminatorV1Config(BASE_NetworkConfig):
     NumLayers: int = 5
     BaseChannels: int = 16
 
-    FakeInputData: str = EMPTY
-    RealInputData: str = EMPTY
+    NumOutputs: int = 1
 
     Activation: ActivationType = ActivationType.LeakyReLU
     ActivationNegativeSlope: Optional[float] = 0.2  # Only needed for LeakyReLU

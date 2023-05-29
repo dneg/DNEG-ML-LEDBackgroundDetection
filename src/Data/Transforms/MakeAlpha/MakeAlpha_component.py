@@ -51,14 +51,14 @@ class MakeAlpha(BASE_Transform):
 
         # 4. Perform the transformation of the data
         maxForegroundArea = w*h*0.3
-        alpha = Image.new("L", (h,w), 0)
+        alpha = Image.new("F", (h,w), 0.0)
         draw = ImageDraw.Draw(alpha)
 
         for t in data_to_transform:
             maxForegroundArea -= t['area']
             for s in t['segmentation']:
                 try:
-                    draw.polygon(s, fill=255)
+                    draw.polygon(s, fill=1.0)
                 except:
                     pass #ignore
             if maxForegroundArea < 0: break
