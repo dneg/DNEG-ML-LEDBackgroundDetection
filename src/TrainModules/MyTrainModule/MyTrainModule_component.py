@@ -8,6 +8,8 @@ from dneg_ml_toolkit.src.Data.ml_toolkit_dictionary import MLToolkitDictionary
 from dneg_ml_toolkit.src.Data.DataModules.DataModule.DataModule_component import DataModule
 from dneg_ml_toolkit.src.Data.Dataloaders.Dataloader.Dataloader_component import Dataloader
 
+from pytorch_lightning.loggers import TensorBoardLogger
+
 import torch
 from torchmetrics import Accuracy, MeanMetric
 
@@ -151,6 +153,62 @@ class MyTrainModule(BASE_TrainModule):
     def training_epoch_end(self, outputs):
         #self._log_epoch_metrics(self.train_metrics, prefix='train/')
         pass
+
+    def validation_step(self, batch, batch_idx):
+        """
+        Called during training to perform validation
+        Args:
+            batch:
+            batch_idx:
+
+        Returns:
+
+        """
+
+        data, targets = batch
+        original_data = data['data'].clone().detach()
+        network_outputs = self.forward(data)
+
+        imagesToLog = []
+        for idxToLog in range(data['data'].shape[0]):
+            source = original_data[idxToLog,:,:,:]
+
+            target = targets['target'][idxToLog,:,:,:]
+            target = torch.cat([target, target, target], 0)
+
+            output = network_outputs['data'][idxToLog,:,:,:]
+            output = torch.cat([output, output, output], 0)
+
+            imagesToLog.append(torch.cat([source, target, output], 1))
+
+
+        imageToLog = torch.cat(imagesToLog,2)
+
+        #self.val_metrics['accuracy'](
+            #network_outputs["data"].detach().cpu().softmax(-1), targets["target"].cpu())
+
+        #device = data['data'].device
+        #total_loss = torch.zeros(1)
+        #total_loss = total_loss.to(device)
+
+        #for loss_function in self.Losses:
+            #loss = loss_function(network_outputs, targets)
+            #total_loss += loss
+
+            #loss_name = loss_function.Name()
+
+        #self.val_metrics['loss'].update(total_loss.detach().cpu())
+
+
+        #image_name = "validation_id_{}".format(id)
+
+        for logger in self.trainer.loggers:
+            if isinstance(logger, TensorBoardLogger):  # Get the tensorboard logger
+                tb_logger = logger.experiment
+
+                tb_logger.add_image('validation', imageToLog, global_step=self.global_step)
+                tb_logger.flush()
+
 
     def _log_epoch_metrics(self, metrics, prefix='train/'):
         logs = {}
