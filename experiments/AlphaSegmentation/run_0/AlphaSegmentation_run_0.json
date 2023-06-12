@@ -99,14 +99,6 @@
           "InPlace": true
         },
         {
-          "Type": "DEBUG_SaveImage",
-          "Name": "SavedImage",
-          "Prefix": "Debug",
-          "DontApplyTo": ["data", "target"],
-          "ApplyTo": [],
-          "SaveFolder": "experiments/AlphaSegmentation/samples/"
-        },
-        {
           "Type": "ToTensor",
           "ApplyTo": ["data", "target", "halftone_signal", "data_fg"],
           "Rescale": false

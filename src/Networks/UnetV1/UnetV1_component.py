@@ -7,6 +7,8 @@ from src.Networks.UnetV1.UnetV1_config import UnetV1Config
 
 from torch import nn, float32, concat, Tensor, sigmoid
 
+ADD_HALFTONE = False
+
 
 class UnetV1(BASE_Network):
     """
@@ -20,7 +22,7 @@ class UnetV1(BASE_Network):
         super().__init__(config, input_shape)
 
         self.config: UnetV1Config = config
-        input_channels = input_shape[2]
+        input_channels = input_shape[2] * 2 if ADD_HALFTONE else input_shape[2]
         output_channels = config.NumOutputs
         activation = get_activation(ActivationType.ReLU)
 
@@ -54,7 +56,8 @@ class UnetV1(BASE_Network):
         Returns:
             Dictionary of the discriminator outputs
         """
-        x = train_dict["data"]
+        x = concat((train_dict['data'], train_dict['halftone_signal']), 1) if ADD_HALFTONE \
+            else train_dict['data']
 
         x1 = self.conv64(x)
         x2 = self.conv128(self.pool(x1))

@@ -86,6 +86,6 @@ class Halftone(BASE_Transform):
         #transformed_data, _ = image_dtype_utils.transform_data_type(grayscale_image, to_type=input_datatype,
         #                                                            device=device)
         transformed_data = np.clip(halftone_image, 0, 255).astype(np.uint8)
-        additional_data = MLToolkitDictionary({"halftone_signal": warped_halftone_float})
+        additional_data = MLToolkitDictionary({"halftone_signal": warped_halftone_signal})
 
         return transformed_data, additional_data

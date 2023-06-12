@@ -54,6 +54,10 @@ class MyTrainModule(BASE_TrainModule):
             'accuracy': Accuracy(task='binary'),
             'loss': MeanMetric()
         }
+        self.val_metrics = {
+            'accuracy': Accuracy(task='binary'),
+            'loss': MeanMetric()
+        }
 
     def configure_optimizers(self) -> List[Dict[str, Any]]:
         """
@@ -165,6 +169,8 @@ class MyTrainModule(BASE_TrainModule):
 
         """
 
+        step_metrics = {}
+
         data, targets = batch
         original_data = data['data'].clone().detach()
         network_outputs = self.forward(data)
@@ -183,6 +189,13 @@ class MyTrainModule(BASE_TrainModule):
 
 
         imageToLog = torch.cat(imagesToLog,2)
+        for logger in self.trainer.loggers:
+            if isinstance(logger, TensorBoardLogger):  # Get the tensorboard logger
+                tb_logger = logger.experiment
+
+                tb_logger.add_image('validation', imageToLog, global_step=self.global_step)
+                tb_logger.flush()
+
 
         #self.val_metrics['accuracy'](
             #network_outputs["data"].detach().cpu().softmax(-1), targets["target"].cpu())
@@ -191,23 +204,20 @@ class MyTrainModule(BASE_TrainModule):
         #total_loss = torch.zeros(1)
         #total_loss = total_loss.to(device)
 
-        #for loss_function in self.Losses:
-            #loss = loss_function(network_outputs, targets)
-            #total_loss += loss
+        total_loss = 0
+        for loss_function in self.Losses:
+            loss = loss_function(network_outputs, targets)
+            total_loss += loss
 
-            #loss_name = loss_function.Name()
+            loss_name = loss_function.Name()
+            step_metrics["step/{}".format(loss_name)] = loss.item()
 
-        #self.val_metrics['loss'].update(total_loss.detach().cpu())
+        self.val_metrics['loss'].update(total_loss.detach().cpu())
+        step_metrics["val_batch_loss"] = total_loss.item()
+        self.log_dict(step_metrics, on_step=True, logger=True)
 
 
         #image_name = "validation_id_{}".format(id)
-
-        for logger in self.trainer.loggers:
-            if isinstance(logger, TensorBoardLogger):  # Get the tensorboard logger
-                tb_logger = logger.experiment
-
-                tb_logger.add_image('validation', imageToLog, global_step=self.global_step)
-                tb_logger.flush()
 
 
     def _log_epoch_metrics(self, metrics, prefix='train/'):
