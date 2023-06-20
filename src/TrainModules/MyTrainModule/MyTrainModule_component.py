@@ -59,6 +59,10 @@ class MyTrainModule(BASE_TrainModule):
             'loss': MeanMetric()
         }
 
+        self.realValDataloader = None 
+        if self.config.SystemConfig.DataModule.TestDataloader is not None:
+            self.realValDataloader = Dataloader(self.config.SystemConfig.DataModule.TestDataloader)
+
     def configure_optimizers(self) -> List[Dict[str, Any]]:
         """
         Lightning function to inform Lightning what optimizers and LR schedulers are being used
@@ -158,6 +162,29 @@ class MyTrainModule(BASE_TrainModule):
         #self._log_epoch_metrics(self.train_metrics, prefix='train/')
         pass
 
+    def real_validation_step(self, device):
+        if self.realValDataloader is None: return
+
+        it = iter(self.realValDataloader)
+        total_loss = 0
+        while True:
+            try:
+                # Retrieve the next item
+                data, targets = next(it)
+                data['data'] = data['data'].to(device)
+                targets['target'] = targets['target'].to(device)
+                network_outputs = self.forward(data)
+
+                # LOG METRICS
+                for loss_function in self.Losses:
+                    loss = loss_function(network_outputs, targets)
+                    total_loss += loss
+
+            except:
+                break
+
+        self.log_dict({"real_val_loss": total_loss}, on_step=True, logger=True)
+
     def validation_step(self, batch, batch_idx):
         """
         Called during training to perform validation
@@ -169,12 +196,12 @@ class MyTrainModule(BASE_TrainModule):
 
         """
 
-        step_metrics = {}
 
         data, targets = batch
         original_data = data['data'].clone().detach()
         network_outputs = self.forward(data)
 
+        #LOG IMAGES
         imagesToLog = []
         for idxToLog in range(data['data'].shape[0]):
             source = original_data[idxToLog,:,:,:]
@@ -197,14 +224,11 @@ class MyTrainModule(BASE_TrainModule):
                 tb_logger.flush()
 
 
-        #self.val_metrics['accuracy'](
-            #network_outputs["data"].detach().cpu().softmax(-1), targets["target"].cpu())
-
-        #device = data['data'].device
-        #total_loss = torch.zeros(1)
-        #total_loss = total_loss.to(device)
+        # LOG METRICS
+        self.val_metrics['accuracy'](network_outputs["data"].to('cpu'), targets["target"].to('cpu'))
 
         total_loss = 0
+        step_metrics = {}
         for loss_function in self.Losses:
             loss = loss_function(network_outputs, targets)
             total_loss += loss
@@ -212,12 +236,14 @@ class MyTrainModule(BASE_TrainModule):
             loss_name = loss_function.Name()
             step_metrics["step/{}".format(loss_name)] = loss.item()
 
-        self.val_metrics['loss'].update(total_loss.detach().cpu())
-        step_metrics["val_batch_loss"] = total_loss.item()
+        total_loss = total_loss.to('cpu')
+        self.val_metrics['loss'].update(total_loss)
+        step_metrics["val_batch_loss"] = total_loss
         self.log_dict(step_metrics, on_step=True, logger=True)
 
-
-        #image_name = "validation_id_{}".format(id)
+        #process real validation data
+        if(batch_idx==0):
+            self.real_validation_step(data['data'].device)
 
 
     def _log_epoch_metrics(self, metrics, prefix='train/'):

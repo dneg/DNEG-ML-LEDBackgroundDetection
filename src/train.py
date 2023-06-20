@@ -13,15 +13,17 @@ from dneg_ml_toolkit.src.Data.Dataloaders.Dataloader.Dataloader_component import
 from pytorch_lightning import Trainer, LightningModule
 from pytorch_lightning.callbacks import ModelCheckpoint, LearningRateMonitor
 from pytorch_lightning.loggers import TensorBoardLogger
+from torch import load
 
 
-def train(training_config: TrainConfig, resume: bool, resume_checkpoint: Optional[str] = None) -> None:
+def train(training_config: TrainConfig, resume: bool, resume_checkpoint: Optional[str] = None, load_checkpoint: Optional[str] = None) -> None:
     """
     Run the Pytorch Lightning Training for the project using the provided configuration object
     Args:
         training_config: A config object created by loading the configuration file for the experiment
         resume: Flag, if true will attempt to load the latest saved checkpoint for the experiment
         resume_checkpoint: Path to a specific checkpoint to resume from. Ignored if resume is set to True.
+        load_checkpoint: Path to a specific checkpoint to initialize run from.
     Returns:
         None
     """
@@ -49,6 +51,10 @@ def train(training_config: TrainConfig, resume: bool, resume_checkpoint: Optiona
                         ComponentStore().build_component_from_config(training_config.TrainModule,
                                                                      experiment_name=training_config.Name,
                                                                      experiment_folder=training_config.Experiment_Folder))
+    if load_checkpoint:
+        checkpoint = load(load_checkpoint)
+        train_module.load_state_dict(checkpoint['state_dict'])
+
     Logger().Log("--------------------Train Module Built----------")
 
     # 4. Configure the device, lr monitor, checkpointer, logger
