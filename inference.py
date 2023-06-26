@@ -8,7 +8,7 @@ from src.Networks.UnetV1.UnetV1_component import UnetV1
 TS =  512   #tile size
 OV =   64   #overlap
 STR = TS-OV #stride
-DOWNSAMPLE = 0  #number of times to halve the input dimensions
+DOWNSAMPLE = 1  #number of times to halve the input dimensions
 
 def calcPadding(imgShape):
     H, W, _ = imgShape
@@ -40,13 +40,25 @@ def postprocess(x, original):
     toTrimW = int((x.shape[1] - W)/2)
     x = x[toTrimH:H+toTrimH, toTrimW:W+toTrimW]
 
+
     if False:
-        x[x>0.5] = 255   # bw mask
+        #RETURN BW mask
+        x[x > 0.5] = 255
+        x = np.dstack((x,x,x))  # as three channels
+    elif False:
+        #RETURN grayscale mask
+        x = x * 255
+        x = np.dstack((x,x,x))  # as three channels
     else:
-        x = x * 255      # greyscale mask
-    #turn into a 3 channel image of ints 0..255
-    x = np.dstack((x,x,x)).astype('uint8')
-    return x
+        #WITH BACKGROUND
+        x = x.numpy()
+        xx, yy = np.mgrid[0:original.shape[0],0:original.shape[1]]
+        bkgd = ((xx / 16).astype('int') + (yy / 16).astype('int')) % 2 * 0x33 + 0x66
+        imgpart = original * x[:,:,None]
+        bkgdpart = bkgd * (x * -1 + 1)
+        x = imgpart + bkgdpart[:,:,None]
+
+    return x.astype('uint8')
 
 #takes a  cv2 image (H,W,C) with channels = (BGR)
 #returns a batch of tensors to be (B,C,H,W) with channels = (RGB)
@@ -126,9 +138,10 @@ def main():
     
         input.release()
         out.release()
+        cv2.waitKey()
 
     else:
-        #input is video
+        #input is an image
         input = cv2.imread(args.input)
         cv2.imshow('in', input)
         pre = preprocess(input)

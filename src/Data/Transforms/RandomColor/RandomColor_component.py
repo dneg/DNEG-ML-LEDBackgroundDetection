@@ -54,12 +54,23 @@ class RandomColor(BASE_Transform):
         data_to_transform, _ = image_dtype_utils.transform_data_type(data_to_transform,
                                                                      to_type=image_dtype_utils.ImageDataType.PILImage)
 
-        # 4. Perform the transformation of the data
+        # 4. Perform the transformation of the data (Color first)
         transform = transforms.ColorJitter(brightness=self.config.Brightness,
                                            contrast=self.config.Contrast,
                                            saturation=self.config.Saturation,
                                            hue=self.config.Hue)
         transformed_data = transform(data_to_transform)
+
+        # 4.1 Perform the transformation of the data (add monochrome noise)
+        if self.config.MonochromeSigma > 0:
+            data_to_transform, _ = image_dtype_utils.transform_data_type(transformed_data,
+                                                                         to_type=image_dtype_utils.ImageDataType.NPArray)
+            monochrome_shape = (data_to_transform.shape[0], data_to_transform.shape[1])
+            amount_of_noise = np.random.random() * self.config.MonochromeSigma,
+            noise = np.random.normal(0, amount_of_noise, monochrome_shape)
+            transformed_data = data_to_transform.astype('float') + noise[:,:,None]
+            transformed_data = np.clip(transformed_data, 0, 255).astype('uint8')
+
 
         # 5. Convert the transformed image back to the original Data type.
         #transformed_data, _ = image_dtype_utils.transform_data_type(grayscale_image, to_type=input_datatype,

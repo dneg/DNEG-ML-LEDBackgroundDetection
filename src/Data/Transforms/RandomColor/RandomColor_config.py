@@ -18,3 +18,6 @@ class RandomColorConfig(BASE_TransformConfig):
 
     # hue should range from 0..0.5  
     Hue: Optional[float] = 0
+
+    # amount (in intensity) of monochrome noise to add (sigma is uniformly chosen from 0..given sigma))
+    MonochromeSigma: Optional[float] = 0.0  

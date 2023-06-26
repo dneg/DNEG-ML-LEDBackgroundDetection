@@ -10,7 +10,7 @@ import torch
 
 import numpy as np
 from scipy.spatial.transform import Rotation as R
-import math, random
+import math, random, warnings
 
 
 OFFSET = np.array([[0,0], [math.pi,0], [math.pi/2, math.pi/2]]) #locations of blue, green, red peaks 
@@ -59,7 +59,11 @@ class Halftone(BASE_Transform):
         dst = dst * max(w, h) / 0.199 # ensures all points magnitude is > DestSize 
         dst = dst * math.pow(2, 1.5 + random.random() * 3)  # eyeballed range of how big pattern
 
-        warped = perspective(self.halftonebase, torch.Tensor(src), torch.Tensor(dst))
+        with warnings.catch_warnings():
+            # torch's perspective was raising these warnings we don't want to see 
+            warnings.simplefilter("ignore")
+            warped = perspective(self.halftonebase, torch.Tensor(src), torch.Tensor(dst))
+
         result = warped[0:3,0:w,0:h]
         return result.permute((2,1,0)).numpy()  # return numpy as (W,H,C)
         
