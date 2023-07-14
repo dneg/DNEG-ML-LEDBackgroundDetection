@@ -15,6 +15,7 @@ import math, random, warnings
 
 OFFSET = np.array([[0,0], [math.pi,0], [math.pi/2, math.pi/2]]) #locations of blue, green, red peaks 
 SOURCE_SIZE = 800 
+SIGNAL_STRENGTH = 0.15
 
 class Halftone(BASE_Transform):
     def __init__(self, config: HalftoneConfig):
@@ -37,7 +38,7 @@ class Halftone(BASE_Transform):
         signal = []
         for cc in [0, 1, 2]:
             signal.append(np.sin(xx + OFFSET[cc][0]) * np.sin(yy + OFFSET[cc][1]))
-        signal = (np.dstack((signal[0], signal[1], signal[2])) + 1.0) * 0.5 # signal from 0..1
+        signal = np.dstack((signal[0], signal[1], signal[2]))  # signal from -1..1
         self.halftonebase = torch.Tensor(signal).permute((2,1,0))   #as tensor (C,H,W)
 
     # calculate a perspective warped patch of the saved signal in halftonebase
@@ -99,7 +100,8 @@ class Halftone(BASE_Transform):
 
         # 4. Perform the transformation of the data
         #we want to multiply by signal from 0.75 to 1.25
-        halftoned_image = data_to_transform * (patch * 0.5 + 0.75) 
+        #halftoned_image = data_to_transform * (patch * 0.5 + 0.75) 
+        halftoned_image = data_to_transform + patch*(SIGNAL_STRENGTH*255.0)
 
         # 5. Convert the transformed image back to the original Data type.
         #transformed_data, _ = image_dtype_utils.transform_data_type(grayscale_image, to_type=input_datatype,

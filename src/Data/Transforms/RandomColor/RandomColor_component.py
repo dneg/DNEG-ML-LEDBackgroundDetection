@@ -6,13 +6,9 @@ from dneg_ml_toolkit.src.Data.image_tools import image_dtype_utils
 from src.Data.Transforms.RandomColor.RandomColor_config import RandomColorConfig
 
 import torchvision.transforms as transforms
-from PIL import Image
 
 import numpy as np
-import math
 
-
-OFFSET = np.array([[0,0], [math.pi,0], [math.pi/2, math.pi/2]]) #locations of blue, green, red peaks 
 
 class RandomColor(BASE_Transform):
 
@@ -69,6 +65,20 @@ class RandomColor(BASE_Transform):
             amount_of_noise = np.random.random() * self.config.MonochromeSigma,
             noise = np.random.normal(0, amount_of_noise, monochrome_shape)
             transformed_data = data_to_transform.astype('float') + noise[:,:,None]
+            transformed_data = np.clip(transformed_data, 0, 255).astype('uint8')
+
+        # 4.2 multiply in a tint of a random color
+        if self.config.Tint > 0:
+            data_to_transform, _ = image_dtype_utils.transform_data_type(transformed_data,
+                                                                         to_type=image_dtype_utils.ImageDataType.NPArray)
+            data_to_transform = data_to_transform.astype('float')
+
+            amount_of_tint = np.random.random() * self.config.Tint
+            randomColor = np.array([1.0, np.random.random(), 0.0])
+            randomColor = randomColor + 1 - (np.sum(randomColor)/3)
+            np.random.shuffle(randomColor)
+            tinted_data = data_to_transform * randomColor
+            transformed_data = data_to_transform * (1-amount_of_tint) + tinted_data * amount_of_tint
             transformed_data = np.clip(transformed_data, 0, 255).astype('uint8')
 
 

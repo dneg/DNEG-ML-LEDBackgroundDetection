@@ -4,11 +4,13 @@ from collections import OrderedDict
 
 from src.Networks.UnetV1.UnetV1_config import UnetV1Config
 from src.Networks.UnetV1.UnetV1_component import UnetV1
+from src.Networks.Resnet34Seg.Resnet34Seg_config import Resnet34SegConfig
+from src.Networks.Resnet34Seg.Resnet34Seg_component import Resnet34Seg
 
 TS =  512   #tile size
-OV =   64   #overlap
+OV =   32   #overlap
 STR = TS-OV #stride
-DOWNSAMPLE = 1  #number of times to halve the input dimensions
+args = None
 
 def calcPadding(imgShape):
     H, W, _ = imgShape
@@ -22,6 +24,7 @@ def calcPadding(imgShape):
 
 # takes the result of a batch (B,C,H,W) image and stitches it back into a cv2 image (H,W,C) ()
 def postprocess(x, original):
+    global args
     hpad, wpad = calcPadding(original.shape)
     H, W,_ = original.shape #width and height of output
 
@@ -40,17 +43,16 @@ def postprocess(x, original):
     toTrimW = int((x.shape[1] - W)/2)
     x = x[toTrimH:H+toTrimH, toTrimW:W+toTrimW]
 
-
-    if False:
-        #RETURN BW mask
+    if args.mode == 'bw':
+        #BW mask
         x[x > 0.5] = 255
         x = np.dstack((x,x,x))  # as three channels
-    elif False:
-        #RETURN grayscale mask
+    elif args.mode == 'grayscale':
+        #grayscale mask
         x = x * 255
         x = np.dstack((x,x,x))  # as three channels
-    else:
-        #WITH BACKGROUND
+    elif args.mode in ['checkerbg', 'compare']: 
+        #With checkerboard background
         x = x.numpy()
         xx, yy = np.mgrid[0:original.shape[0],0:original.shape[1]]
         bkgd = ((xx / 16).astype('int') + (yy / 16).astype('int')) % 2 * 0x33 + 0x66
@@ -79,31 +81,57 @@ def preprocess(x):
 
 def processFrame(frame, model: UnetV1, device):
     x = preprocess(frame)
+    batches = x.split(8, dim=0)
 
-    with torch.no_grad():
-        y = model.forward({'data': x.to(device)})['data']
+    y = []
+    for b in batches:
+        with torch.no_grad():
+            result = model.forward({'data': b.to(device)})
+        y.append(result['data'].to('cpu'))
 
-    return postprocess(y.to('cpu'), frame)
+    return postprocess(torch.concat(y), frame)
 
 
 def getUNetModelFromCheckpoint(checkpointPath, device):
-    state_dict = torch.load(checkpointPath, map_location = 'cpu')['state_dict']
+    model = torch.load(checkpointPath, map_location='cpu')
+    state_dict = model['state_dict']
     clean_state_dict = OrderedDict()
     for key, value in state_dict.items():
-        clean_state_dict[key.replace('Network.', '')] = value
+        newkey = key.replace('Network.', '')
+        #newkey = newkey.replace('.weight', '.conv.weight')
+        #newkey = newkey.replace('.bias', '.conv.bias')
+        clean_state_dict[newkey] = value
 
-    unetv1 = UnetV1(UnetV1Config(), (TS, TS, 3))
-    unetv1.load_state_dict(clean_state_dict)
-    return unetv1.to(device)
+    modelIsResnet = any(['res_block' in x for x in state_dict.keys()])
 
+    if modelIsResnet:
+        resnetseg = Resnet34Seg(Resnet34SegConfig(NumOutputs=1), (TS, TS, 3))
+        resnetseg.load_state_dict(clean_state_dict)
+        return resnetseg.to(device)
+    else:
+        unetv1 = UnetV1(UnetV1Config(), (TS, TS, 3))
+        unetv1.load_state_dict(clean_state_dict)
+        return unetv1.to(device)
 
 def main():
+    global args
     parser = argparse.ArgumentParser()                                               
     parser.add_argument('--input', '-i', type=str, required=True, help='filename of input video')
     parser.add_argument('--experiment', '-e', type=str, required=False, default = 'AlphaSegmentation', help='experiment name')
     parser.add_argument('--run', '-r', type=int, required=False, default = 0, help='run number')
     parser.add_argument('--checkpoint', '-c', type=str, required=True, help='checkpoint. the part of the filename that fills in the blank: \'epoch=____.ckpt\'')
+    parser.add_argument('--mode', '-m', type=str, default = 'checkerbg', help='either: bw, grayscale, or checkerbg (default)')
+    parser.add_argument('--downsample', '-d', type=int, default = 0, help='numtimes to halve the width/height of input')
     args = parser.parse_args()
+
+    assert args.mode in ['bw', 'grayscale', 'checkerbg', 'compare'], 'Error: Unrecognized output mode, must be bw, grayscale, checkerbg, or compare'
+    assert os.path.exists(args.input), 'Error: unable to find file ' + args.input
+
+    # calculate output filename
+    outputDir = "./experiments/{}/run_{}/out/".format(args.experiment, args.run)
+    if not os.path.exists(outputDir):
+        os.makedirs(outputDir)
+    outputPath = os.path.join(outputDir, '{}{}_{}'.format(args.mode, args.checkpoint, os.path.basename(args.input)))
 
 
     # load model
@@ -114,16 +142,12 @@ def main():
     if args.input.endswith('.mp4'):
         #input is video
         input = cv2.VideoCapture(args.input)
-        if not input.isOpened():
-            print('Error: unable to find file ', args.input)
-            return
-        w = int(input.get(cv2.CAP_PROP_FRAME_WIDTH)) >> DOWNSAMPLE
-        h = int(input.get(cv2.CAP_PROP_FRAME_HEIGHT)) >> DOWNSAMPLE
+        assert input.isOpened(), 'Error: unable to open file ' + args.input
+        w = int(input.get(cv2.CAP_PROP_FRAME_WIDTH)) >> args.downsample
+        h = int(input.get(cv2.CAP_PROP_FRAME_HEIGHT)) >> args.downsample
         fps = input.get(cv2.CAP_PROP_FPS)
-    
-        outputPath = os.path.join(os.path.dirname(args.input),
-                                      'out_' + os.path.basename(args.input))
-        out = cv2.VideoWriter(outputPath, cv2.VideoWriter_fourcc(*'mp4v'), fps, (w,h))
+        outh = h*2 if args.mode == 'compare' else h
+        out = cv2.VideoWriter(outputPath, cv2.VideoWriter_fourcc(*'mp4v'), fps, (w,outh))
       
         while True:
             ret, inframe = input.read()
@@ -131,6 +155,8 @@ def main():
                 break
             inframe = cv2.resize(inframe, (w, h), interpolation = cv2.INTER_AREA)
             outframe = processFrame(inframe, unetv1, device)
+            if args.mode == 'compare':
+                outframe = np.concatenate([inframe, outframe], axis=0)
             cv2.imshow('current frame', outframe)
             out.write(outframe)
             if cv2.waitKey(25) & 0xFF == ord('q'):
@@ -142,12 +168,14 @@ def main():
 
     else:
         #input is an image
-        input = cv2.imread(args.input)
-        cv2.imshow('in', input)
-        pre = preprocess(input)
-        output = pre[:,0,:,:].squeeze()
-        post = postprocess(output,input)
-        cv2.imshow('out', post)
+        inframe = cv2.imread(args.input)
+        H, W, _ = inframe.shape
+        w = W >> args.downsample
+        h = H >> args.downsample
+        inframe = cv2.resize(inframe, (w, h), interpolation = cv2.INTER_AREA)
+        outframe = processFrame(inframe, unetv1, device)
+        cv2.imshow('out', cv2.resize(outframe, (1024, int(h*1024/w)), interpolation = cv2.INTER_AREA))
+        cv2.imwrite(outputPath, outframe)
         cv2.waitKey()
 
 main()
