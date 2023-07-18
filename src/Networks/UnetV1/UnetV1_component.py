@@ -5,7 +5,7 @@ from dneg_ml_toolkit.src.Networks.BASE_Network.BASE_Network_component import BAS
 from dneg_ml_toolkit.src.Data.ml_toolkit_dictionary import MLToolkitDictionary
 from src.Networks.UnetV1.UnetV1_config import UnetV1Config
 
-from torch import nn, concat, sigmoid
+from torch import nn, concat, sigmoid, log
 
 
 class UnetV1(BASE_Network):
@@ -55,6 +55,13 @@ class UnetV1(BASE_Network):
             Dictionary of the discriminator outputs
         """
         x = train_dict['data']
+
+        if False:
+            #input as logspace
+            x = log(x+1e-4)
+            mn = x.min() 
+            mx = x.max() 
+            x = (x-mn)/(mx-mn)
 
         x1 = self.conv64(x)
         x2 = self.conv128(self.pool(x1))

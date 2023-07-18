@@ -98,8 +98,10 @@ def getUNetModelFromCheckpoint(checkpointPath, device):
     clean_state_dict = OrderedDict()
     for key, value in state_dict.items():
         newkey = key.replace('Network.', '')
-        #newkey = newkey.replace('.weight', '.conv.weight')
-        #newkey = newkey.replace('.bias', '.conv.bias')
+        if False:
+            #if weights are from before toolkit rebase.
+            newkey = newkey.replace('.weight', '.conv.weight')
+            newkey = newkey.replace('.bias', '.conv.bias')
         clean_state_dict[newkey] = value
 
     modelIsResnet = any(['res_block' in x for x in state_dict.keys()])
@@ -146,8 +148,8 @@ def main():
         w = int(input.get(cv2.CAP_PROP_FRAME_WIDTH)) >> args.downsample
         h = int(input.get(cv2.CAP_PROP_FRAME_HEIGHT)) >> args.downsample
         fps = input.get(cv2.CAP_PROP_FPS)
-        outh = h*2 if args.mode == 'compare' else h
-        out = cv2.VideoWriter(outputPath, cv2.VideoWriter_fourcc(*'mp4v'), fps, (w,outh))
+        outw = w*2 if args.mode == 'compare' else h
+        out = cv2.VideoWriter(outputPath, cv2.VideoWriter_fourcc(*'mp4v'), fps, (outw,h))
       
         while True:
             ret, inframe = input.read()
@@ -156,7 +158,7 @@ def main():
             inframe = cv2.resize(inframe, (w, h), interpolation = cv2.INTER_AREA)
             outframe = processFrame(inframe, unetv1, device)
             if args.mode == 'compare':
-                outframe = np.concatenate([inframe, outframe], axis=0)
+                outframe = np.concatenate([inframe, outframe], axis=1)
             cv2.imshow('current frame', outframe)
             out.write(outframe)
             if cv2.waitKey(25) & 0xFF == ord('q'):
