@@ -57,11 +57,11 @@ class Resnet34Seg(BASE_Network):
                                         activation=activation, **activation_params)
 
         #----NEW PART---- we have h/4, w/4, 512.  upconv twice and then conv2d to get 1 channel
-        upconv1 = ConvolutionTranspose2D(output_shape[2], output_shape[2], 2, padding=0, stride=2)
+        upconv1 = ConvolutionTranspose2D(output_shape[2], output_shape[2]>>1, 2, padding=0, stride=2)
         self.add_layer("upconv_1",upconv1)
         output_shape = upconv1.get_output_shape(output_shape)
 
-        upconv2 = ConvolutionTranspose2D(output_shape[2], output_shape[2], 2, padding=0, stride=2)
+        upconv2 = ConvolutionTranspose2D(output_shape[2], output_shape[2]>>1, 2, padding=0, stride=2)
         self.add_layer("upconv_2",upconv2)
         output_shape = upconv2.get_output_shape(output_shape)
 
