@@ -5,16 +5,19 @@ from dneg_ml_toolkit.src.Data.image_tools import image_dtype_utils
 
 from src.Data.Transforms.Halftone.Halftone_config import HalftoneConfig
 
-from torchvision.transforms import RandomPerspective, CenterCrop
+from torchvision.transforms.functional import perspective
+import torch
 
 import numpy as np
-import math
+from scipy.spatial.transform import Rotation as R
+import math, random, warnings
 
 
 OFFSET = np.array([[0,0], [math.pi,0], [math.pi/2, math.pi/2]]) #locations of blue, green, red peaks 
+SOURCE_SIZE = 800 
+SIGNAL_STRENGTH = 0.15
 
 class Halftone(BASE_Transform):
-
     def __init__(self, config: HalftoneConfig):
         # The Transform will apply the data augmentation to any data specified in its configuration's
         # ApplyTo field.
@@ -27,7 +30,7 @@ class Halftone(BASE_Transform):
 
         super().__init__(config, required_transform_metadata=required_transform_metadata)
         self.config: HalftoneConfig = cast(HalftoneConfig, config)
-        xx, yy = np.mgrid[0:1600, 0:1600]
+        xx, yy = np.mgrid[0:SOURCE_SIZE, 0:SOURCE_SIZE]
         scale = 2 * math.pi / self.config.Period
         xx = xx * scale
         yy = yy * scale
@@ -35,13 +38,36 @@ class Halftone(BASE_Transform):
         signal = []
         for cc in [0, 1, 2]:
             signal.append(np.sin(xx + OFFSET[cc][0]) * np.sin(yy + OFFSET[cc][1]))
-        signal = (np.dstack((signal[0], signal[1], signal[2])) + 1.0) * (255./2) # signal from 0..255
-        signal_uint8 = signal.astype(np.uint8)
-        self.halftonebase, _ = image_dtype_utils.transform_data_type(
-            signal_uint8,
-            to_type=image_dtype_utils.ImageDataType.PILImage
-        )
+        signal = np.dstack((signal[0], signal[1], signal[2]))  # signal from -1..1
+        self.halftonebase = torch.Tensor(signal).permute((2,1,0))   #as tensor (C,H,W)
 
+    # calculate a perspective warped patch of the saved signal in halftonebase
+    # returns as a numpy array (W,H,C)
+    def halftonePatch(self, w, h):
+        assert(w < SOURCE_SIZE and h < SOURCE_SIZE)
+        src = np.array([[0, SOURCE_SIZE], [0, 0], [SOURCE_SIZE, 0], [SOURCE_SIZE, SOURCE_SIZE]])
+
+        # start w points in xy-plane
+        dst = np.array([[-1, 1, 0], [-1, -1, 0], [1, -1, 0], [1, 1, 0]])
+
+        #we rotate randomly around z, then around x then around z again.
+        r = R.from_euler('zxz', np.random.random((3)) * [360, 45, 360], degrees = True)
+        dst = R.apply(r,dst)
+        dst = dst + [0,0,3]  #push out 3 units
+        dst = np.array([[v[0]/(v[2]+3), v[1]/(v[2]+3)] for v in dst]) # convert to 2D
+
+        # range
+        dst = dst * max(w, h) / 0.199 # ensures all points magnitude is > DestSize 
+        dst = dst * math.pow(2, 1.5 + random.random() * 3)  # eyeballed range of how big pattern
+
+        with warnings.catch_warnings():
+            # torch's perspective was raising these warnings we don't want to see 
+            warnings.simplefilter("ignore")
+            warped = perspective(self.halftonebase, torch.Tensor(src), torch.Tensor(dst))
+
+        result = warped[0:3,0:w,0:h]
+        return result.permute((2,1,0)).numpy()  # return numpy as (W,H,C)
+        
 
     def apply_transform(self, data_key: str, data_to_transform: Any, transform_metadata: Optional[Dict[str, Any]]) \
             -> Tuple[Any, Optional[MLToolkitDictionary[Any]]]:
@@ -70,22 +96,17 @@ class Halftone(BASE_Transform):
         data_to_transform, _ = image_dtype_utils.transform_data_type(data_to_transform,
                                                                      to_type=image_dtype_utils.ImageDataType.NPArray)
         (w,h,c) = np.shape(data_to_transform) 
-
-        warped_signal = RandomPerspective(distortion_scale = 0.5, fill=128)(self.halftonebase)
-        cropped_signal = CenterCrop((w,h))(warped_signal)
-        warped_halftone_signal, _ = image_dtype_utils.transform_data_type(
-            cropped_signal,
-            to_type=image_dtype_utils.ImageDataType.NPArray
-        )
-        warped_halftone_float = warped_halftone_signal.astype(float) * (0.5 / 255) + 0.75 #signal from 0.75 to 1.25
+        patch = self.halftonePatch(w, h)
 
         # 4. Perform the transformation of the data
-        halftone_image = data_to_transform * warped_halftone_float[0:w, 0:h]
+        #we want to multiply by signal from 0.75 to 1.25
+        #halftoned_image = data_to_transform * (patch * 0.5 + 0.75) 
+        halftoned_image = data_to_transform + patch*(SIGNAL_STRENGTH*255.0)
 
         # 5. Convert the transformed image back to the original Data type.
         #transformed_data, _ = image_dtype_utils.transform_data_type(grayscale_image, to_type=input_datatype,
         #                                                            device=device)
-        transformed_data = np.clip(halftone_image, 0, 255).astype(np.uint8)
-        additional_data = MLToolkitDictionary({"halftone_signal": warped_halftone_float})
+        transformed_data = np.clip(halftoned_image, 0, 255).astype(np.uint8)
+        additional_data = MLToolkitDictionary({"halftone_signal": patch})
 
         return transformed_data, additional_data

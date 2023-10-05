@@ -1,6 +1,6 @@
 {
   "Type": "Train",
-  "Epochs": 10,
+  "Epochs": 20,
   "Name": "AlphaSegmentation",
   "TrainModule": {
     "Type": "MyTrainModule",
@@ -67,13 +67,6 @@
           "FixedSeed": 1973
         },
         {
-          "Type": "Halftone",
-          "Name": "HalftoneTransform",
-          "ApplyTo": "data",
-          "InPlace": true,
-          "Period": 20
-        },
-        {
           "Type": "RandomColor",
           "Name": "BackgroundColoring",
           "ApplyTo": "data",
@@ -86,10 +79,17 @@
         {
           "Type": "RandomCrop",
           "Name": "BackgroundCrop",
-          "ApplyTo": ["data", "halftone_signal"],
+          "ApplyTo": "data",
           "InPlace": true,
           "Size": 128,
           "FixedSeed": 2023
+        },
+        {
+          "Type": "Halftone",
+          "Name": "HalftoneTransform",
+          "ApplyTo": "data",
+          "InPlace": true,
+          "Period": 10
         },
         {
           "Type": "Combine",
@@ -151,13 +151,6 @@
           "Size": 128
         },
         {
-          "Type": "Halftone",
-          "Name": "HalftoneTransform",
-          "ApplyTo": "data",
-          "InPlace": true,
-          "Period": 20
-        },
-        {
           "Type": "RandomColor",
           "Name": "BackgroundColoring",
           "ApplyTo": "data",
@@ -170,9 +163,16 @@
         {
           "Type": "RandomCrop",
           "Name": "BackgroundCrop",
-          "ApplyTo": ["data", "halftone_signal"],
+          "ApplyTo": "data",
           "InPlace": true,
           "Size": 128
+        },
+        {
+          "Type": "Halftone",
+          "Name": "HalftoneTransform",
+          "ApplyTo": "data",
+          "InPlace": true,
+          "Period": 10
         },
         {
           "Type": "Combine",
@@ -187,7 +187,7 @@
           "Prefix": "Debug",
           "ApplyTo": [],
           "DontApplyTo": ["data", "target"],
-          "SaveFolder": "experiments/AlphaSegmentation/samples/"
+          "SaveFolder": "experiments/AlphaSegmentation/run_1/"
         },
         {
           "Type": "ToTensor",

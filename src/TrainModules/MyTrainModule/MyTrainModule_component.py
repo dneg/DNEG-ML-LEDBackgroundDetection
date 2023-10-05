@@ -8,6 +8,8 @@ from dneg_ml_toolkit.src.Data.ml_toolkit_dictionary import MLToolkitDictionary
 from dneg_ml_toolkit.src.Data.DataModules.DataModule.DataModule_component import DataModule
 from dneg_ml_toolkit.src.Data.Dataloaders.Dataloader.Dataloader_component import Dataloader
 
+from pytorch_lightning.loggers import TensorBoardLogger
+
 import torch
 from torchmetrics import Accuracy, MeanMetric
 
@@ -52,6 +54,14 @@ class MyTrainModule(BASE_TrainModule):
             'accuracy': Accuracy(task='binary'),
             'loss': MeanMetric()
         }
+        self.val_metrics = {
+            'accuracy': Accuracy(task='binary'),
+            'loss': MeanMetric()
+        }
+
+        self.realValDataloader = None 
+        if self.config.SystemConfig.DataModule.TestDataloader is not None:
+            self.realValDataloader = Dataloader(self.config.SystemConfig.DataModule.TestDataloader)
 
     def configure_optimizers(self) -> List[Dict[str, Any]]:
         """
@@ -151,6 +161,92 @@ class MyTrainModule(BASE_TrainModule):
     def training_epoch_end(self, outputs):
         #self._log_epoch_metrics(self.train_metrics, prefix='train/')
         pass
+
+    def real_validation_step(self, device):
+        if self.realValDataloader is None: return
+
+        it = iter(self.realValDataloader)
+        total_loss = 0
+        while True:
+            try:
+                # Retrieve the next item
+                data, targets = next(it)
+                data['data'] = data['data'].to(device)
+                targets['target'] = targets['target'].to(device)
+                network_outputs = self.forward(data)
+
+                # LOG METRICS
+                for loss_function in self.Losses:
+                    loss = loss_function(network_outputs, targets)
+                    total_loss += loss
+
+            except:
+                break
+
+        self.log_dict({"real_val_loss": total_loss}, on_step=True, logger=True)
+
+    def validation_step(self, batch, batch_idx):
+        """
+        Called during training to perform validation
+        Args:
+            batch:
+            batch_idx:
+
+        Returns:
+
+        """
+
+
+        data, targets = batch
+        original_data = data['data'].clone().detach()
+        network_outputs = self.forward(data)
+
+        #LOG IMAGES
+        imagesToLog = []
+        for idxToLog in range(data['data'].shape[0]):
+            source = original_data[idxToLog,:,:,:]
+
+            target = targets['target'][idxToLog,:,:,:]
+            if target.shape[0]==1:
+                target = torch.cat([target, target, target], 0)
+
+            output = network_outputs['data'][idxToLog,:,:,:]
+            if output.shape[0]==1:
+                output = torch.cat([output, output, output], 0)
+
+            imagesToLog.append(torch.cat([source, target, output], 1))
+
+
+        imageToLog = torch.cat(imagesToLog,2)
+        for logger in self.trainer.loggers:
+            if isinstance(logger, TensorBoardLogger):  # Get the tensorboard logger
+                tb_logger = logger.experiment
+
+                tb_logger.add_image('validation', imageToLog, global_step=self.global_step)
+                tb_logger.flush()
+
+
+        # LOG METRICS
+        #self.val_metrics['accuracy'](network_outputs["data"].to('cpu'), targets["target"].to('cpu'))
+
+        total_loss = 0
+        step_metrics = {}
+        for loss_function in self.Losses:
+            loss = loss_function(network_outputs, targets)
+            total_loss += loss
+
+            loss_name = loss_function.Name()
+            step_metrics["step/{}".format(loss_name)] = loss.item()
+
+        total_loss = total_loss.to('cpu')
+        self.val_metrics['loss'].update(total_loss)
+        step_metrics["val_batch_loss"] = total_loss
+        self.log_dict(step_metrics, on_step=True, logger=True)
+
+        #process real validation data
+        if(batch_idx==0):
+            self.real_validation_step(data['data'].device)
+
 
     def _log_epoch_metrics(self, metrics, prefix='train/'):
         logs = {}

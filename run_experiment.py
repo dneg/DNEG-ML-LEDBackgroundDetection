@@ -34,17 +34,23 @@ def cli():
                                                    "If no checkpoint is found, will start from the beginning.")
 @click.option('--resume_from_checkpoint', help="Path to a specific checkpoint to resume the training from. "
                                                "Cannot be use if --resume is enabled.")
-def train(experiment: str, run: Union[str, int], device: str, resume: bool, resume_from_checkpoint: Optional[str] = None) -> None:
+@click.option('--load', '-l', help="Path to a specific checkpoint to initialize a new training run"
+                                   "(not resuming an old run)")
+def train(experiment: str,
+          run: Union[str, int],
+          device: str,
+          resume: bool,
+          resume_from_checkpoint: Optional[str] = None,
+          load: Optional[str] = None) -> None:
     """
     Run a training on the specified experiment
 
     """
 
     # 1. Check the resume args
-    if resume and resume_from_checkpoint is not None:
-        raise ValueError("Cannot use --resume_from_checkpoint when --resume is enabled. Use --resume to resume from"
-                         "the latest checkpoint, or --resume_from_checkpoint with a valid checkpoint path to resume"
-                         "from a specific checkpoint.")
+    num_checkpoint_options = sum(bool(x) for x in [resume, resume_from_checkpoint, load])
+    if num_checkpoint_options > 1:
+        raise ValueError("Cannot use more than one of --resume_from_checkpoint, --resume, or --load")
 
     # 2. Register the core toolkit components, then the components for the current project
     register_toolkit_components()
@@ -56,7 +62,7 @@ def train(experiment: str, run: Union[str, int], device: str, resume: bool, resu
                                                           experiment=experiment, run=run, device=device)
 
     # 4. Call the trainer to run the training
-    run_train(training_config=config, resume=resume, resume_checkpoint=resume_from_checkpoint)
+    run_train(training_config=config, resume=resume, resume_checkpoint=resume_from_checkpoint, load_checkpoint=load)
 
 
 @cli.command()

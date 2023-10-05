@@ -52,6 +52,15 @@ class RandomCrop(BASE_Transform):
         # format using the ML Toolkit's helper function
         data_to_transform, _ = image_dtype_utils.transform_data_type(data_to_transform,
                                                                      to_type=image_dtype_utils.ImageDataType.NPArray)
+
+        (w,h,c) = np.shape(data_to_transform) 
+        #pad with 0s if too small
+        if w < self.config.Size:
+            padding = int(self.config.Size - w)
+            data_to_transform = np.pad(data_to_transform,((0,padding),(0,0),(0,0)),'constant')
+        if h < self.config.Size:
+            padding = int(self.config.Size - h)
+            data_to_transform = np.pad(data_to_transform,((0,0),(0,padding),(0,0)),'constant')
         (w,h,c) = np.shape(data_to_transform) 
 
 
@@ -59,7 +68,9 @@ class RandomCrop(BASE_Transform):
 
         # Use self.random_seed to seed the rng, so that all calls to apply_transform in the current step
         # will have the same sequence of randoms
-        rng = np.random.default_rng(seed=self.random_seed)
+        seed = self.config.FixedSeed
+        if seed == None: seed = self.random_seed
+        rng = np.random.default_rng(seed)
         x = math.floor(rng.uniform(0, w-self.config.Size))
         y = math.floor(rng.uniform(0, h-self.config.Size))
 

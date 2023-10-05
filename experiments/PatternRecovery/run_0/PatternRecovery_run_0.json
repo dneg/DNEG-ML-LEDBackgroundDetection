@@ -1,0 +1,180 @@
+{
+  "Type": "Train",
+  "Epochs": 20,
+  "Name": "AlphaSegmentation",
+  "TrainModule": {
+    "Type": "MyTrainModule",
+    "Network": {
+      "Type": "UnetV1",
+      "NumOutputs": 3
+    },
+    "Loss": [
+      {
+        "Type": "DiceLoss",
+        "Source": "data",
+        "Target": "target"
+      },
+      {
+        "Type": "CrossEntropyLoss",
+        "Source": "data",
+        "Target": "target"
+      }
+    ],
+    "Optimizer": {
+      "Type": "ADAMW",
+      "LR": 0.0001
+    }
+  },
+  "DataModule": {
+    "Type": "DataModule",
+    "TestDataloader": {
+      "Type": "Dataloader",
+      "BatchSize": 64,
+      "NumWorkers": 1,
+      "PinMemory": true,
+      "Shuffle": false,
+      "Datasets":
+        [
+          {
+            "Type": "LedVal",
+            "Source": "Data/LED-VAL"
+          }
+        ],
+      "Transforms": [
+        {
+          "Type": "ToTensor",
+          "ApplyTo": ["data", "target"]
+        }
+      ]
+    },
+    "ValDataloader": {
+      "Type": "Dataloader",
+      "BatchSize": 10,
+      "NumWorkers": 8,
+      "PinMemory": true,
+      "Shuffle": false,
+      "Collate": {
+        "Type": "ManageDictsThenCollate",
+        "InputDict": 0,
+        "InputField": "halftoned",
+        "TargetDict": 0,
+        "TargetField": "cropped"
+      },
+      "Datasets":
+        [
+          {
+            "Type": "CocoDetection",
+            "Source": "Data/CocoDetection",
+            "TrainingSet": false
+          }
+        ],
+      "Transforms": [
+        {
+          "Type": "RandomCrop",
+          "Name": "Crop",
+          "ApplyTo": ["data"],
+          "InPlace": false,
+          "OutputNames": ["cropped"],
+          "Size": 128,
+          "FixedSeed": 1973
+        },
+        {
+          "Type": "Halftone",
+          "Name": "HalftoneTransform",
+          "ApplyTo": "cropped",
+          "InPlace": false,
+          "OutputNames": ["halftoned"],
+          "Period": 10
+        },
+        {
+          "Type": "RandomColor",
+          "Name": "Coloring",
+          "ApplyTo": ["cropped", "halftoned"],
+          "Saturation": 0.1,
+          "Contrast": 0.1,
+          "Brightness": 0.6,
+          "Hue": 0.1,
+          "Tint": 0.2,
+          "InPlace": true
+        },
+        {
+          "Type": "GaussianBlur",
+          "Name": "BackgroundBlur",
+          "ApplyTo": ["cropped", "halftoned"],
+          "InPlace": true,
+          "Probability": 1.0,
+          "Sigma": [0, 3]
+        },
+        {
+          "Type": "ToTensor",
+          "ApplyTo": ["cropped", "halftoned"]
+        }
+      ]
+    },
+    "TrainDataloader": {
+      "Type": "Dataloader",
+      "BatchSize": 128,
+      "NumWorkers": 8,
+      "PinMemory": true,
+      "Shuffle": true,
+      "Collate": {
+        "Type": "ManageDictsThenCollate",
+        "InputDict": 0,
+        "InputField": "halftoned",
+        "TargetDict": 0,
+        "TargetField": "cropped"
+      },
+      "Datasets":
+        [
+          {
+            "Type": "CocoDetection",
+            "Source": "Data/CocoDetection",
+            "TrainingSet": true,
+            "SmallRun": false
+          }
+        ],
+      "Transforms": [
+        {
+          "Type": "RandomCrop",
+          "Name": "Crop",
+          "ApplyTo": ["data"],
+          "InPlace": false,
+          "OutputNames": ["cropped"],
+          "Size": 128,
+          "FixedSeed": 1973
+        },
+        {
+          "Type": "Halftone",
+          "Name": "HalftoneTransform",
+          "ApplyTo": "cropped",
+          "InPlace": false,
+          "OutputNames": ["halftoned"],
+          "Period": 10
+        },
+        {
+          "Type": "RandomColor",
+          "Name": "Coloring",
+          "ApplyTo": ["cropped", "halftoned"],
+          "Saturation": 0.1,
+          "Contrast": 0.1,
+          "Brightness": 0.6,
+          "Hue": 0.1,
+          "Tint": 0.2,
+          "InPlace": true
+        },
+        {
+          "Type": "GaussianBlur",
+          "Name": "BackgroundBlur",
+          "ApplyTo": ["cropped", "halftoned"],
+          "InPlace": true,
+          "Probability": 1.0,
+          "Sigma": [0, 3]
+        },
+        {
+          "Type": "ToTensor",
+          "ApplyTo": ["cropped", "halftoned"]
+        }
+      ]
+    }
+  }
+}

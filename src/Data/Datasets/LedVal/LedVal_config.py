@@ -11,7 +11,7 @@ from dneg_ml_toolkit.src.Data.Datasets.BASE_Dataset.BASE_Dataset_config import B
 # Fields are inherited from the parent Config class, so a Component may have more configuration and fields with
 # default values that can be customized.
 @dataclass
-class CocoDetectionConfig(BASE_DatasetConfig):
+class LedValConfig(BASE_DatasetConfig):
     """
     Configuration dataclass for the CocoDetection Dataset. Any dataclass fields defined here are configurable from JSON,
     and this object is used to create the CocoDetection Dataset object, initialized based on the values of the fields.
@@ -20,6 +20,3 @@ class CocoDetectionConfig(BASE_DatasetConfig):
         TrainingSet (boolean, default: true); Whether to use the training or testing subset of CIFAR10
 
     """
-
-    TrainingSet: bool = True
-    SmallRun: bool = False

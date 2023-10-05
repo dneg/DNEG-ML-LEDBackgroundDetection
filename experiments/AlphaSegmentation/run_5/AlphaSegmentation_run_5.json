@@ -8,11 +8,18 @@
       "Type": "UnetV1",
       "NumOutputs": 1
     },
-    "Loss": {
-      "Type": "BinaryCrossEntropyLoss",
-      "Source": "data",
-      "Target": "target"
-    },
+    "Loss": [
+      {
+        "Type": "DiceLoss",
+        "Source": "data",
+        "Target": "target"
+      },
+      {
+        "Type": "BinaryCrossEntropyLoss",
+        "Source": "data",
+        "Target": "target"
+      }
+    ],
     "Optimizer": {
       "Type": "ADAMW",
       "LR": 0.0001
@@ -20,6 +27,26 @@
   },
   "DataModule": {
     "Type": "DataModule",
+    "TestDataloader": {
+      "Type": "Dataloader",
+      "BatchSize": 32,
+      "NumWorkers": 4,
+      "PinMemory": true,
+      "Shuffle": false,
+      "Datasets":
+        [
+          {
+            "Type": "LedVal",
+            "Source": "Data/LED-VAL"
+          }
+        ],
+      "Transforms": [
+        {
+          "Type": "ToTensor",
+          "ApplyTo": ["data", "target"]
+        }
+      ]
+    },
     "ValDataloader": {
       "Type": "Dataloader",
       "BatchSize": 10,
@@ -54,42 +81,52 @@
           "Name": "ForegroundBlur",
           "ApplyTo": ["data_fg", "target"],
           "InPlace": true,
-          "Probability": 0.4,
-          "KernelSize": [15, 5],
-          "Angle": [0]
+          "Probability": 0,
+          "KernelSize": [5, 15],
+          "Angle": [0,90] 
         },
         {
           "Type": "RandomCrop",
           "Name": "ForegroundCrop",
           "ApplyTo": ["data_fg", "target"],
           "InPlace": true,
-          "Size": 128,
+          "Size": 256,
           "FixedSeed": 1973
+        },
+        {
+          "Type": "RandomCrop",
+          "Name": "BackgroundCrop",
+          "ApplyTo": "data",
+          "InPlace": true,
+          "Size": 256,
+          "FixedSeed": 2023
         },
         {
           "Type": "Halftone",
           "Name": "HalftoneTransform",
           "ApplyTo": "data",
           "InPlace": true,
-          "Period": 20
+          "Period": 10
         },
         {
           "Type": "RandomColor",
           "Name": "BackgroundColoring",
           "ApplyTo": "data",
-          "Saturation": 0.2,
-          "Contrast": 0.5,
+          "Saturation": 0.1,
+          "Contrast": 0.1,
           "Brightness": 0.5,
-          "Hue": 0.05,
+          "Hue": 0.10,
+          "MonochromeSigma": 40,
           "InPlace": true
         },
         {
-          "Type": "RandomCrop",
-          "Name": "BackgroundCrop",
-          "ApplyTo": ["data", "halftone_signal"],
+          "Type": "MotionBlur",
+          "Name": "BackgroundBlur",
+          "ApplyTo": "data",
           "InPlace": true,
-          "Size": 128,
-          "FixedSeed": 2023
+          "Probability": 0.2,
+          "KernelSize": [5, 15],
+          "Angle": [0,90] 
         },
         {
           "Type": "Combine",
@@ -107,7 +144,7 @@
     },
     "TrainDataloader": {
       "Type": "Dataloader",
-      "BatchSize": 128,
+      "BatchSize": 32,
       "NumWorkers": 4,
       "PinMemory": true,
       "Shuffle": true,
@@ -116,7 +153,8 @@
           {
             "Type": "CocoDetection",
             "Source": "Data/CocoDetection",
-            "TrainingSet": true
+            "TrainingSet": true,
+            "SmallRun": false
           }
         ],
       "Transforms": [
@@ -139,40 +177,50 @@
           "Name": "ForegroundBlur",
           "ApplyTo": ["data_fg", "target"],
           "InPlace": true,
-          "Probability": 0.4,
-          "KernelSize": [15, 5],
-          "Angle": [0]
+          "Probability": 0,
+          "KernelSize": [5, 15],
+          "Angle": [0,90] 
         },
         {
           "Type": "RandomCrop",
           "Name": "ForegroundCrop",
           "ApplyTo": ["data_fg", "target"],
           "InPlace": true,
-          "Size": 128
+          "Size": 256
+        },
+        {
+          "Type": "RandomCrop",
+          "Name": "BackgroundCrop",
+          "ApplyTo": "data",
+          "InPlace": true,
+          "Size": 256
         },
         {
           "Type": "Halftone",
           "Name": "HalftoneTransform",
           "ApplyTo": "data",
           "InPlace": true,
-          "Period": 20
+          "Period": 10
         },
         {
           "Type": "RandomColor",
           "Name": "BackgroundColoring",
           "ApplyTo": "data",
-          "Saturation": 0.2,
-          "Contrast": 0.5,
+          "Saturation": 0.1,
+          "Contrast": 0.1,
           "Brightness": 0.5,
-          "Hue": 0.05,
+          "Hue": 0.10,
+          "MonochromeSigma": 40,
           "InPlace": true
         },
         {
-          "Type": "RandomCrop",
-          "Name": "BackgroundCrop",
-          "ApplyTo": ["data", "halftone_signal"],
+          "Type": "MotionBlur",
+          "Name": "BackgroundBlur",
+          "ApplyTo": "data",
           "InPlace": true,
-          "Size": 128
+          "Probability": 0.2,
+          "KernelSize": [5, 15],
+          "Angle": [0,90] 
         },
         {
           "Type": "Combine",
@@ -187,7 +235,7 @@
           "Prefix": "Debug",
           "ApplyTo": [],
           "DontApplyTo": ["data", "target"],
-          "SaveFolder": "experiments/AlphaSegmentation/samples/"
+          "SaveFolder": "experiments/AlphaSegmentation/run_3/"
         },
         {
           "Type": "ToTensor",

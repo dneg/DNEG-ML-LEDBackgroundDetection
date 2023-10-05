@@ -5,12 +5,12 @@ from dneg_ml_toolkit.src.Component.component_config import EMPTY
 from dneg_ml_toolkit.src.Networks.layers import ActivationType
 
 @dataclass
-class UnetDiscriminatorV1Config(BASE_NetworkConfig):
+class UnetV1Config(BASE_NetworkConfig):
     """
-    Config dataclass for all configuration necessary for the UNETPatchDiscriminatorV1 network.
+    Config dataclass for all configuration necessary for the UnetV1 network.
     """
 
-    # Add any parameters unique to the UNETPatchDiscriminatorV1 network here
+    # Add any parameters unique to the UNETV1 network here
     NumLayers: int = 5
     BaseChannels: int = 16
 

@@ -47,7 +47,9 @@ class CocoDetection(BASE_Dataset):
 
         trainStr = 'train' if config.TrainingSet else 'val'
         datadir = config.Source +'/'+ trainStr + '2017'
-        annFile = config.Source + '/sama_' + trainStr + '_annotations/sama_coco_coco_format_' + trainStr + '_0.json' #TODO
+        annFile = config.Source + '/sama_' + trainStr + '_annotations.json'
+        if(config.SmallRun):
+            annFile = config.Source+'/sama_'+trainStr+'_annotations/sama_coco_coco_format_'+trainStr+'_0.json'
         self.data_source = pytorch_CocoDetection(root=datadir, annFile=annFile)
 
         # Private variables that are lazy-loaded by reading the dataset metadata in some of theDataset's functions

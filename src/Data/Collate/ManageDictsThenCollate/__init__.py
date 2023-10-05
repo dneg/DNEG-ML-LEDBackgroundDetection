@@ -1,0 +1,2 @@
+from .ManageDictsThenCollate_component import MyCollate
+from .ManageDictsThenCollate_config import MyCollateConfig
