@@ -6,6 +6,7 @@ from src.Networks.UnetV1.UnetV1_config import UnetV1Config
 from src.Networks.UnetV1.UnetV1_component import UnetV1
 from src.Networks.Resnet34Seg.Resnet34Seg_config import Resnet34SegConfig
 from src.Networks.Resnet34Seg.Resnet34Seg_component import Resnet34Seg
+from dneg_ml_toolkit.src.Networks.BASE_Network import BASE_Network
 
 TS =  512   #tile size
 OV =   32   #overlap
@@ -79,7 +80,7 @@ def preprocess(x):
 
     return patches  # model expects a float 0..1
 
-def processFrame(frame, model: UnetV1, device):
+def processFrame(frame, model: BASE_Network, device):
     x = preprocess(frame)
     batches = x.split(8, dim=0)
 
@@ -148,7 +149,7 @@ def main():
         w = int(input.get(cv2.CAP_PROP_FRAME_WIDTH)) >> args.downsample
         h = int(input.get(cv2.CAP_PROP_FRAME_HEIGHT)) >> args.downsample
         fps = input.get(cv2.CAP_PROP_FPS)
-        outw = w*2 if args.mode == 'compare' else h
+        outw = w*2 if args.mode == 'compare' else w
         out = cv2.VideoWriter(outputPath, cv2.VideoWriter_fourcc(*'mp4v'), fps, (outw,h))
       
         while True:

@@ -207,10 +207,12 @@ class MyTrainModule(BASE_TrainModule):
             source = original_data[idxToLog,:,:,:]
 
             target = targets['target'][idxToLog,:,:,:]
-            target = torch.cat([target, target, target], 0)
+            if target.shape[0]==1:
+                target = torch.cat([target, target, target], 0)
 
             output = network_outputs['data'][idxToLog,:,:,:]
-            output = torch.cat([output, output, output], 0)
+            if output.shape[0]==1:
+                output = torch.cat([output, output, output], 0)
 
             imagesToLog.append(torch.cat([source, target, output], 1))
 
@@ -225,7 +227,7 @@ class MyTrainModule(BASE_TrainModule):
 
 
         # LOG METRICS
-        self.val_metrics['accuracy'](network_outputs["data"].to('cpu'), targets["target"].to('cpu'))
+        #self.val_metrics['accuracy'](network_outputs["data"].to('cpu'), targets["target"].to('cpu'))
 
         total_loss = 0
         step_metrics = {}
