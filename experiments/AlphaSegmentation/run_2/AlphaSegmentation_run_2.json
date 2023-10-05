@@ -1,0 +1,221 @@
+{
+  "Type": "Train",
+  "Epochs": 10,
+  "Name": "AlphaSegmentation",
+  "TrainModule": {
+    "Type": "MyTrainModule",
+    "Network": {
+      "Type": "UnetV1",
+      "NumOutputs": 1
+    },
+    "Loss": {
+      "Type": "BinaryCrossEntropyLoss",
+      "Source": "data",
+      "Target": "target"
+    },
+    "Optimizer": {
+      "Type": "ADAMW",
+      "LR": 0.0001
+    }
+  },
+  "DataModule": {
+    "Type": "DataModule",
+    "TestDataloader": {
+      "Type": "Dataloader",
+      "BatchSize": 128,
+      "NumWorkers": 4,
+      "PinMemory": true,
+      "Shuffle": false,
+      "Datasets":
+        [
+          {
+            "Type": "LedVal",
+            "Source": "Data/LED-VAL"
+          }
+        ],
+      "Transforms": [
+        {
+          "Type": "ToTensor",
+          "ApplyTo": ["data", "target"]
+        }
+      ]
+    },
+    "ValDataloader": {
+      "Type": "Dataloader",
+      "BatchSize": 10,
+      "NumWorkers": 4,
+      "PinMemory": true,
+      "Shuffle": false,
+      "Datasets":
+        [
+          {
+            "Type": "CocoDetection",
+            "Source": "Data/CocoDetection",
+            "TrainingSet": false
+          }
+        ],
+      "Transforms": [
+        {
+          "Type": "MakeAlpha",
+          "Name": "Alpha",
+          "ApplyTo": "target",
+          "InPlace": true
+        },
+        {
+          "Type": "ApplyAlpha",
+          "Name": "foreground",
+          "ApplyTo": "data",
+          "AlphaChannel": "target",
+          "InPlace": false,
+          "OutputSuffix": "fg"
+        },
+        {
+          "Type": "MotionBlur",
+          "Name": "ForegroundBlur",
+          "ApplyTo": ["data_fg", "target"],
+          "InPlace": true,
+          "Probability": 0.2,
+          "KernelSize": [5, 15],
+          "Angle": [0,90] 
+        },
+        {
+          "Type": "RandomCrop",
+          "Name": "ForegroundCrop",
+          "ApplyTo": ["data_fg", "target"],
+          "InPlace": true,
+          "Size": 128,
+          "FixedSeed": 1973
+        },
+        {
+          "Type": "RandomColor",
+          "Name": "BackgroundColoring",
+          "ApplyTo": "data",
+          "Saturation": 0.2,
+          "Contrast": 0.5,
+          "Brightness": 0.5,
+          "Hue": 0.125,
+          "InPlace": true
+        },
+        {
+          "Type": "RandomCrop",
+          "Name": "BackgroundCrop",
+          "ApplyTo": "data",
+          "InPlace": true,
+          "Size": 128,
+          "FixedSeed": 2023
+        },
+        {
+          "Type": "Halftone",
+          "Name": "HalftoneTransform",
+          "ApplyTo": "data",
+          "InPlace": true,
+          "Period": 10
+        },
+        {
+          "Type": "Combine",
+          "Name": "CompositeFGandBG",
+          "ApplyTo": "data",
+          "Foreground": "data_fg",
+          "InPlace": true
+        },
+        {
+          "Type": "ToTensor",
+          "ApplyTo": ["data", "target", "halftone_signal", "data_fg"],
+          "Rescale": false
+        }
+      ]
+    },
+    "TrainDataloader": {
+      "Type": "Dataloader",
+      "BatchSize": 128,
+      "NumWorkers": 4,
+      "PinMemory": true,
+      "Shuffle": true,
+      "Datasets":
+        [
+          {
+            "Type": "CocoDetection",
+            "Source": "Data/CocoDetection",
+            "TrainingSet": true,
+            "SmallRun": false
+          }
+        ],
+      "Transforms": [
+        {
+          "Type": "MakeAlpha",
+          "Name": "Alpha",
+          "ApplyTo": "target",
+          "InPlace": true
+        },
+        {
+          "Type": "ApplyAlpha",
+          "Name": "foreground",
+          "ApplyTo": "data",
+          "AlphaChannel": "target",
+          "InPlace": false,
+          "OutputSuffix": "fg"
+        },
+        {
+          "Type": "MotionBlur",
+          "Name": "ForegroundBlur",
+          "ApplyTo": ["data_fg", "target"],
+          "InPlace": true,
+          "Probability": 0.2,
+          "KernelSize": [5, 15],
+          "Angle": [0,90] 
+        },
+        {
+          "Type": "RandomCrop",
+          "Name": "ForegroundCrop",
+          "ApplyTo": ["data_fg", "target"],
+          "InPlace": true,
+          "Size": 128
+        },
+        {
+          "Type": "RandomColor",
+          "Name": "BackgroundColoring",
+          "ApplyTo": "data",
+          "Saturation": 0.2,
+          "Contrast": 0.5,
+          "Brightness": 0.5,
+          "Hue": 0.125,
+          "InPlace": true
+        },
+        {
+          "Type": "RandomCrop",
+          "Name": "BackgroundCrop",
+          "ApplyTo": "data",
+          "InPlace": true,
+          "Size": 128
+        },
+        {
+          "Type": "Halftone",
+          "Name": "HalftoneTransform",
+          "ApplyTo": "data",
+          "InPlace": true,
+          "Period": 10
+        },
+        {
+          "Type": "Combine",
+          "Name": "CompositeFGandBG",
+          "ApplyTo": "data",
+          "Foreground": "data_fg",
+          "InPlace": true
+        },
+        {
+          "Type": "DEBUG_SaveImage",
+          "Name": "SavedImage",
+          "Prefix": "Debug",
+          "ApplyTo": [],
+          "DontApplyTo": ["data", "target"],
+          "SaveFolder": "experiments/AlphaSegmentation/run_2/"
+        },
+        {
+          "Type": "ToTensor",
+          "ApplyTo": ["data", "target", "halftone_signal", "data_fg"],
+          "Rescale": false
+        }
+      ]
+    }
+  }
+}
