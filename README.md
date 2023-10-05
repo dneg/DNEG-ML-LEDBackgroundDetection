@@ -15,6 +15,23 @@ Once this is done, install the following in the same conda environment to run DN
 
 ## Usage
 
+### Inference!
+There's a top level .py to run: `inference.py` which will take an image or video plus a model and try to detect and mask out the LED background.  A sample command line call looks like this:
+
+```
+python inference.py --input ../my_data/capture.jpg -eAlphaSegmentation -r8 -c019 -d1 -mcheckerbg
+```
+
+* --input is a pointer to the video or image file.  
+* -e, -r, -c: are pointers to the model (experiment, run, checkpoint)
+* -d: is the number of times to downsample the image (i.e., the number of times the pixel width/height is halved)
+* -m is the output mode ('compare', 'checkerbg', 'grayscale', 'bw') and compare is valid for videos only.
+
+The checkpoint and the output file can be found in place where the training happens (i.e., with the experiments)  So, in the above example, the checkpoint would be
+```./experiments/AlphaSegmentation/run_8/checkpoints/AlphaSegmentation_epoch=019.ckpt```
+and the output image would be:
+```./experiments/AlphaSegmentation/run_8/out/checkerbg019_capture.jpg```
+
 ### Make Experiment
 Make Experiment is a helper tool to speed up creating a new experiment. It allows you to choose a configuration template
 to start from, and builds the experiment's folder using this template.
